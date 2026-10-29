@@ -29,7 +29,7 @@ export async function reserveQuota({store,client,cost,now=Date.now(),limits=defa
   if(!store||!/^[a-f0-9]{64}$/.test(client)||!Number.isSafeInteger(cost)||cost<1||cost>5||!Number.isSafeInteger(now)||now<0||!count(limits.daily)||!count(limits.total)||!count(limits.perClient))throw unavailable();
   const day=new Date(now).toISOString().slice(0,10),hour=Math.floor(now/3600000);
   for(let attempt=0;attempt<12;attempt++){
-    let snapshot;try{snapshot=await store.read();}catch{throw unavailable('quota_read');}
+    let snapshot;try{snapshot=await store.read();}catch(error){if(error?.code==='QUOTA_CONFLICT')continue;throw unavailable('quota_read');}
     const state=snapshot===null?{version:1,day,dailyCalls:0,totalCalls:0,clients:{}}:snapshot?.state;
     if(!valid(state)||state.day>day||(snapshot&&typeof snapshot.etag!=='string'))throw unavailable('quota_state');
     const dailyCalls=state.day===day?state.dailyCalls:0;

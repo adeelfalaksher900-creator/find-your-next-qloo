@@ -1,6 +1,6 @@
 # Encrypted cloud collections
 
-Implemented October 29, 2026. The dedicated Supabase project is active. Live backend and browser tests passed; the refreshed Vercel frontend has not yet been deployed.
+Implemented October 29, 2026. The dedicated Supabase project is active. Live backend and browser tests passed; the refreshed Vercel frontend is now deployed to Production. The production proxy also passed an encrypted two-client-state check with synthetic data and cleanup.
 
 ## Use
 
@@ -14,7 +14,7 @@ The browser generates 32 random bytes with Web Crypto. HKDF-SHA-256 derives thre
 
 The same-origin Vercel proxy accepts only a fixed Supabase Edge Function URL, a 64-character hex ID and a derived access token in an Authorization header. It forwards the capability in a dedicated header, never a URL parameter. The Edge Function stores a SHA-256 hash of the derived token. Supabase stores the encrypted envelope, revision, timestamps and request counters. It never receives the plaintext titles or encryption key. The hosting services can still observe request metadata.
 
-The Edge Function uses automatic server secrets to call the private database RPC. Both tables have RLS enabled, with no browser-role policies and no anonymous/authenticated grants. Only service_role can execute the RPC. Supabase's two informational “RLS Enabled No Policy” notices are intentional deny-by-default tables; no warning/error-level security advisor was returned. Do not add public SELECT policies to silence them.
+The Edge Function uses automatic server secrets to call the private database RPC. Both tables have RLS enabled, with no browser-role policies and no anonymous/authenticated grants. Only service_role can execute the RPC. Supabase's two informational [“RLS Enabled No Policy” notices](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy) are intentional deny-by-default tables; no warning/error-level security advisor was returned. Do not add public SELECT policies to silence them.
 
 This protects stored cloud content from being read without its key. It does not protect a compromised browser, malicious JavaScript running on the app origin, a shared browser profile or someone who obtains the key. Local browser items and the remembered connection are not encrypted at rest by the app.
 

@@ -4,7 +4,7 @@ Reviewed the official overview, resources, rules, submission requirements, judgi
 
 | Requirement | Evidence/status |
 |---|---|
-| Externally hosted working core Qloo journey | **Blocked:** production requests still return temporary-unavailable errors; private live checks alone are insufficient. |
+| Externally hosted working core Qloo journey | Released: real public Portal 2 → books and Portal 2 + Minecraft → games each returned 24 Qloo results; see validation.md for scope. |
 | Public source and open-source license | Public repository created with source, setup instructions, tests and MIT LICENSE. |
 | Written explanation | Public story updated with factual current behavior, sources and limitations. |
 | Required custom answers | Prepared in submission-draft.md, including the distinction between Devpost creation on October 27 and first local code commit on October 28; contest entry remains unsubmitted. |
@@ -13,8 +13,8 @@ Reviewed the official overview, resources, rules, submission requirements, judgi
 
 | Equal-weight criterion | Practical evidence and remaining gap |
 |---|---|
-| Technological Implementation | Server-side Qloo resolution, year disambiguation, insights, explanation data and shared quota guard exist. Production reliability must be fixed and retested. |
-| Design | Latest source implements a coherent mobile/desktop interface and working collection controls. Local browser and automated accessibility checks pass within their documented scope. Encrypted cloud saving also passed live backend/two-profile browser checks; public frontend release and real-device checks remain. |
+| Technological Implementation | Server-side Qloo resolution, year disambiguation, insights, explanation data and shared quota guard exist. Bounded real Preview/Production checks passed after the quota validator fix; long-term reliability is not established. |
+| Design | Latest source implements a coherent mobile/desktop interface and working collection controls. Local browser and automated accessibility checks pass within their documented scope. Encrypted cloud saving also passed live backend/two-profile browser checks; the public frontend is released; actual-device checks remain. |
 | Potential Impact | Concrete use case: collect favorites and help a group start a game-night decision. No fabricated time savings, user count or recommendation-quality statistic is claimed. Real-user validation is outstanding. |
 | Quality of the Idea | Cross-category discovery and combined group signals are the proposed distinction. Similar gift/game Qloo projects already exist, so uniqueness or competitive advantage is not established. |
 

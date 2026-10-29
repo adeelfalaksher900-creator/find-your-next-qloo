@@ -5,6 +5,7 @@ import handler from '../api/discover.js';
 function response(){return {code:200,body:null,setHeader(){},status(code){this.code=code;return this;},json(body){this.body=body;return this;}};}
 const body={seeds:[{title:'Portal 2',qlooType:'videogame'}],target:'book'};
 const keys=['QLOO_API_KEY','QLOO_PROXY_ENABLED','BLOB_READ_WRITE_TOKEN','RATE_LIMIT_SALT'];
+test('platform JSON parser exceptions become safe 400 responses before any provider call',async()=>{const req={method:'POST',headers:{'content-type':'application/json'}};Object.defineProperty(req,'body',{get(){throw new SyntaxError('Private platform parser detail');}});const res=response();await handler(req,res);assert.equal(res.code,400);assert.equal(res.body.error,'Invalid JSON.');});
 test('discovery fails closed before provider calls without complete quota configuration',async()=>{
   const saved=Object.fromEntries(keys.map(k=>[k,process.env[k]]));
   const originalFetch=globalThis.fetch;let calls=0;globalThis.fetch=async()=>{calls++;throw new Error('Unexpected network call');};

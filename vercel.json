@@ -27,6 +27,18 @@
     {
       "source": "/cloud.js",
       "destination": "/public/cloud.js"
+    },
+    {
+      "source": "/instrument.js",
+      "destination": "/public/instrument.js"
+    },
+    {
+      "source": "/instrument.css",
+      "destination": "/public/instrument.css"
+    },
+    {
+      "source": "/media.js",
+      "destination": "/public/media.js"
     }
   ],
   "headers": [
@@ -43,7 +55,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://static.tvmaze.com https://covers.openlibrary.org https://archive.org https://*.us.archive.org https://shared.fastly.steamstatic.com https://cdn.cloudflare.steamstatic.com https://images.gog-statics.com https://cdn.akamai.steamstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+          "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://sttc.gamersgate.com https://static.tvmaze.com https://covers.openlibrary.org https://archive.org https://*.us.archive.org https://shared.fastly.steamstatic.com https://cdn.cloudflare.steamstatic.com https://images.gog-statics.com https://cdn.akamai.steamstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
         }
       ]
     }

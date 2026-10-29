@@ -30,6 +30,13 @@ test('does not guess when no exact Qloo match is found', async () => {
   await assert.rejects(runDiscovery({seeds:[{title:'Unknown',qlooType:'book'}],target:'artist'},{key:'test-key',fetcher}),/could not match/i);
 });
 
+test('requests the selected result count and never manufactures missing provider results',async()=>{
+  const seed={title:'Portal 2',qlooType:'videogame'},calls=[];
+  const fetcher=async url=>{const u=new URL(url);calls.push(u);return {ok:true,json:async()=>u.pathname==='/search'?{results:[{name:'Portal 2',entity_id:'123e4567-e89b-12d3-a456-426614174000'}]}:{results:{entities:Array.from({length:30},(_,i)=>({entity_id:`123e4567-e89b-12d3-a456-${String(i+100).padStart(12,'0')}`,name:'Provider result '+i}))}}};};
+  const result=await runDiscovery({seeds:[seed],target:'book',take:48},{key:'synthetic',fetcher});assert.equal(calls[1].searchParams.get('take'),'48');assert.equal(result.items.length,30);assert.equal(result.requestedCount,48);assert.equal(result.source,'Qloo');
+  for(const take of [0,100,'24',null,13])assert.ok(validateRequest({seeds:[seed],target:'book',take}));
+});
+
 test('does not guess when a title matches multiple Qloo entities', async () => {
   const fetcher=async()=>({ok:true,json:async()=>({results:[
     {name:'Portal',entity_id:'123e4567-e89b-12d3-a456-426614174000'},

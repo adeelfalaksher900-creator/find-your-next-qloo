@@ -12,19 +12,19 @@ Search anime and TV, books and PC-game offers from named sources. Keep a collect
 
 **Team:** Adeel Falak Sher and Raouf Khalid.
 
-**Status:** A bounded private-build check exercised real Qloo search and insights, including anime-to-games, group games, destinations and places. On production, one anime-to-games request succeeded, but later group and single-interest requests returned 503 from the quota guard. The guard's production reliability is unresolved; the live Qloo flow is not ready for judges. Real-device and screen-reader testing and user validation also remain outstanding; see the validation report for the precise scope of checks.
+**Status:** Released to [Production](https://find-your-next-qloo.vercel.app/) after protected Preview checks. Live Qloo requests returned 24 book suggestions for Portal 2 and 24 game suggestions for Portal 2 + Minecraft; a Preview request returned 48 books and another returned 24 destinations for Radiohead. These are bounded integration checks, not recommendation-quality measurements.
 
-**Latest source:** The iOS-inspired refresh, collection search/sorting, grid/list views and optional encrypted cross-device collections are implemented. The Supabase backend is active and passed live checks through a local copy of the app. The public Vercel website still serves the earlier release. The owner authorized protected Preview and then Production after live checks; CLI device authorization is the remaining deployment access step.
+**Current release:** Real source pagination, 12/24/48 Qloo result controls, collection type filters, optional encrypted cloud sync, compact CDN-cached WebP artwork and an animated Anatomy selection instrument. Seventy Node tests pass. See [validation](docs/validation.md) for the exact coverage and remaining device/audit limits.
 
 ![Local preview of the refreshed interface](docs/assets/desktop-preview.jpg)
 
-*Local browser preview, October 29, 2026, with Qloo disabled. The thumbnail above is project artwork, not a screenshot. Missing provider artwork uses a small code-generated SVG.*
+*Earlier local browser preview, October 29, 2026, with Qloo disabled. The thumbnail above is project artwork, not a screenshot. Missing provider artwork uses a small code-generated SVG.*
 
 ## What works in the code
 
 - Browse current PC game offers from CheapShark, including source links and prices in USD. Prices and availability may change.
 - Search anime and TV shows through TVmaze and books through Open Library. Anime results are limited to shows TVmaze labels as Anime; coverage is not comprehensive.
-- Add catalog titles or manually enter favorites from supported categories in a device-local interest profile; save and remove items. The latest source adds collection search, title sorting and persistent grid/list layout controls. Download a collection file and import it on another device: imports merge rather than erase existing items. Optional cloud collections synchronize interests and saved items across devices using a private recovery key. Manual transfer remains available.
+- Add catalog titles or manually enter favorites from supported categories in a device-local interest profile; save and remove items. Collection search, type filters, title sorting and persistent grid/list layout controls are available. Download a collection file and import it on another device: imports merge rather than erase existing items. Optional cloud collections synchronize interests and saved items across devices using a private recovery key. Manual transfer remains available.
 - A four-slot instrument displays the number of interests selected for a Qloo query; it is not a taste score.
 - Compare two to four people's entered game lists, ignoring differences in case and punctuation, and show the shortest playtime entered when everyone provides one. A separate group discovery action sends the first game entered for each person to Qloo as combined taste signals. It does not predict whether everyone will enjoy a suggestion. This does not compare calendars; users choose a time and check platform, ownership and game duration themselves.
 - Choose a Qloo outcome for anime/TV, games, books, artists, brands, gifts, travel, creator discovery, venue or event planning. The adapter resolves exact, unambiguous entity names and uses TVmaze's premiere year when available to distinguish shows with the same name. It requests Qloo insights and shows named inputs only when Qloo returns per-interest explanation data.
@@ -46,6 +46,8 @@ flowchart TD
     A --> L[Private shared quota guard]
     L --> Q[Qloo search and insights]
 ```
+
+Books and game offers use 24-record source pages and a Load more action. Duplicate game offers are combined, so 24 offers can produce fewer unique game cards. TVmaze search has a finite matching result set and no search-page API; changing the title can find other records. Qloo results default to 24, with 12 or 48 available; a request may return fewer records when coverage is limited.
 
 Catalog results are not Qloo recommendations. The user's selected titles are sent to Qloo only when requesting taste discovery. Interests, saved items and group entries remain in browser storage. If cloud sync is enabled, only interests and saved items are additionally encrypted in the browser and synchronized to Supabase. The randomly generated sync key stays on the device and must be copied privately to connect another device. Anyone with the key can access or delete the collection; there is no email recovery. Exported collection files contain interests and saved items, not group entries, and should be kept private. To limit abuse, the server stores keyed hashes of visitor IP addresses and request counts in a private quota record; old visitor counts are removed on a later successful request in a new hourly window. The host may maintain its own logs. Do not enter personal information as an interest.
 
@@ -77,6 +79,12 @@ From Saved, create a collection, copy the sync key privately and connect it on t
 
 `npm run verify:cloud` requires `FYN_CLOUD_LIVE=yes` plus cloud configuration. It creates one synthetic encrypted collection, checks access denial and stale revisions, and removes its own test record. Browser checks use controlled cloud responses by default. `FYN_CLOUD_BROWSER_LIVE=yes` with the configured local server runs the two-profile cloud UI check against the real backend and cleans up its synthetic record. These checks do not contact Qloo.
 
+## Artwork and interaction
+
+Catalog artwork uses the actual URL attached to each source record. A shared admission list prevents the catalog and browser from disagreeing about supported hosts. The server resizes accepted raster artwork to bounded WebP and enables CDN caching; fixed host/path rules, redirect validation, body/pixel limits and a bounded local cache prevent an unrestricted image proxy. Source attribution and links remain on each card. Direct source fallback is retained. A title card explicitly marks records with no supplied artwork; it is not presented as an official cover.
+
+The Anatomy figure now contains separate SVG pad/carriage layers. Selection changes animate those layers; pointer tilt is bounded, offscreen/hidden motion stops, and reduced-motion preferences are respected. The figure reports selected-interest count, not an inferred taste score.
+
 ## Sources and licenses
 
 - Code: MIT, see [LICENSE](LICENSE).
@@ -92,6 +100,8 @@ Existing Qloo projects already cover gifts and game discovery, including [Taste 
 
 `npm test` exercises exact name resolution, year disambiguation, failed Qloo configuration, quota concurrency, catalog parsing, input validation, portable collection parsing, authenticated encryption/tampering, independent-device sync, offline merges, revision conflicts, proxy boundaries, common-game matching, HTTP routes and a local redirect attack against a test key. `node scripts/load-check.mjs` sends a bounded 600-request load to a local process without calling providers.
 
-For the optional browser checks, install Chrome or Chromium and install test-only tools without changing the lockfile (`npm install --no-save --no-package-lock --ignore-scripts playwright-core@1.58.2 axe-core@4.14.0`). Set `CHROME_PATH` to your browser executable if Playwright cannot find its own browser, then run `node scripts/check-ui.mjs`. The runner starts and stops a local server with Qloo disabled, then runs the interaction and accessibility suites. Both use controlled catalog responses. Set `FYN_BASE_URL` to another local test origin if needed; it must end in `/`. The accessibility script reports incomplete checks separately and returns a nonzero status for detected violations.
+For the optional browser checks, install Chrome or Chromium and install test-only tools without changing the lockfile (`npm install --no-save --no-package-lock --ignore-scripts playwright-core@1.58.2 axe-core@4.14.0`). Set `CHROME_PATH` to your browser executable if Playwright cannot find its own browser, then run `node scripts/check-ui.mjs`. The runner starts and stops a local server with Qloo disabled, then runs the interaction, pagination/artwork/animation, cloud and accessibility suites. Both use controlled catalog responses. Set `FYN_BASE_URL` to another local test origin if needed; it must end in `/`. The accessibility script reports incomplete checks separately and returns a nonzero status for detected violations.
 
 For an opt-in quota-consuming production smoke test, set `FYN_LIVE_TEST=yes` and run `node scripts/live-browser-check.cjs`. Browser emulation and automated accessibility tools are not substitutes for a real phone, VoiceOver, NVDA or a complete accessibility audit. See [the validation report](docs/validation.md) for scope and results. Tests do not establish comprehensive Qloo coverage, recommendation quality, accessibility compliance, suitability for minors, usability or competitive advantage.
+
+`FYN_SECURITY_LIVE=yes FYN_BASE_URL=https://<authorized-host>/ node scripts/security-smoke.mjs` performs bounded negative HTTP checks without valid Qloo calls. `FYN_CLOUD_LIVE=yes FYN_BASE_URL=https://<authorized-host>/ node scripts/verify-deployed-cloud.mjs` creates and cleans up one synthetic encrypted collection through the deployed proxy. These opt-in checks are for an owner-authorized target.

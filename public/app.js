@@ -1,34 +1,38 @@
+import {catalogArtworkUrl as allowedImage,optimizedArtworkUrl} from './media.js';
+import {createInstrument,updateInstrument,disposeInstruments} from './instrument.js';
 import {CloudCollection} from './cloud.js';
-import {commonGames,mergeInterests,selectionSummary,createManualInterest,summarizePlaytime,createLatestGate,createInFlightPool,checkDiscoveryAvailability,normalizeName,parseCollectionFile,mergeCollection,chooseArtwork} from './core.js';
+import {commonGames,mergeInterests,selectionSummary,createManualInterest,summarizePlaytime,createLatestGate,createInFlightPool,checkDiscoveryAvailability,normalizeName,parseCollectionFile,mergeCollection} from './core.js';
 const $=s=>document.querySelector(s), key='find-your-next-v1';
 const validTypes=new Set(['tv_show','movie','videogame','artist','book','podcast','person','place','destination','brand']);
-let cloud=null;
-let state={interests:[],saved:[],group:[{games:'',minutes:''},{games:'',minutes:''}]}, qlooReady=false, transferMessage='';
+let cloud=null;const qlooWatchers=new Map();
+let state={interests:[],saved:[],group:[{games:'',minutes:''},{games:'',minutes:''}]}, qlooReady=false, qlooPending=true, transferMessage='';
 function tidy(item){if(!item||typeof item!=='object'||typeof item.id!=='string'||!item.id.trim()||typeof item.title!=='string'||!item.title.trim()||!validTypes.has(item.qlooType))return null;return {id:item.id.slice(0,200),title:item.title.slice(0,150),kind:String(item.kind??'').slice(0,30),qlooType:item.qlooType,source:String(item.source??'').slice(0,40),detail:String(item.detail??'').slice(0,150),year:Number.isInteger(item.year)&&item.year>=1800&&item.year<=2100?item.year:null,url:allowedUrl(item.url),image:allowedImage(item.image),imageFallback:allowedImage(item.imageFallback),heroImage:allowedImage(item.heroImage),price:typeof item.price==='string'&&/^\d+(\.\d{2})?$/.test(item.price)?item.price:null};}
 function allowedUrl(value){try{const u=new URL(value);return u.protocol==='https:'&&['www.tvmaze.com','openlibrary.org','www.cheapshark.com'].includes(u.hostname)?u.href:null;}catch{return null;}}
-function allowedImage(value){try{const u=new URL(value);return u.protocol==='https:'&&['static.tvmaze.com','covers.openlibrary.org','shared.fastly.steamstatic.com','cdn.cloudflare.steamstatic.com','images.gog-statics.com','cdn.akamai.steamstatic.com'].includes(u.hostname)?u.href:null;}catch{return null;}}
 try{const stored=JSON.parse(localStorage.getItem(key)||'{}');for(const field of ['interests','saved'])if(Array.isArray(stored[field]))state[field]=stored[field].map(tidy).filter(Boolean).slice(0,60);if(Array.isArray(stored.group)&&stored.group.length>=2)state.group=stored.group.slice(0,4).map(p=>({games:String(p.games??'').slice(0,3000),minutes:String(p.minutes??'').slice(0,5)}));}catch{}
 function saveState(notifyCloud=true){let saved=true;try{localStorage.setItem(key,JSON.stringify(state));}catch{saved=false;alert('This browser could not save your changes on this device.');}updateCounts();if(saved&&notifyCloud)cloud?.changed();return saved;}
-function updateCounts(){document.querySelectorAll('[data-saved-count]').forEach(x=>x.textContent=String(state.saved.length));document.querySelectorAll('[data-taste-count]').forEach(x=>x.textContent=String(state.interests.length));const meter=$('[data-home-instrument]');if(meter){meter.querySelector('img').src=`/instrument/count-${Math.min(state.interests.length,4)}.svg`;meter.querySelector('figcaption').textContent=state.interests.length?`${state.interests.length} saved · use up to 4 in a search`:'Start with something you love';}}
+function updateCounts(){document.querySelectorAll('[data-saved-count]').forEach(x=>x.textContent=String(state.saved.length));document.querySelectorAll('[data-taste-count]').forEach(x=>x.textContent=String(state.interests.length));const meter=$('[data-home-instrument]');if(meter){updateInstrument(meter,state.interests.length,state.interests.length?`${state.interests.length} saved · use up to 4 in a search`:'Start with something you love');}}
 function el(tag,cls='',txt=''){const x=document.createElement(tag);if(cls)x.className=cls;if(txt)x.textContent=txt;return x;}
 function btn(text,cls,fn){const b=el('button',cls,text);b.type='button';b.addEventListener('click',fn);return b;}
 function link(text,cls,href){const a=el('a',cls,text);a.href=href;return a;}
 function external(text,href,cls=''){const a=link(text,cls,href);a.target='_blank';a.rel='noopener noreferrer';return a;}
-function clear(node){node.replaceChildren();}
+function clear(node){disposeInstruments(node);for(const element of qlooWatchers.keys())if(node===element||node.contains(element))qlooWatchers.delete(element);node.replaceChildren();}
 function heading(kicker,title,description,badge){const box=el('div','page-heading'),left=el('div');left.append(el('p','eyebrow',kicker),el('h1','',title),el('p','',description));box.append(left);if(badge)box.append(el('span','badge',badge));return box;}
 function sectionTitle(title,sub,moreHref){const box=el('div','section-title'),left=el('div');left.append(el('h2','',title));if(sub)left.append(el('p','',sub));box.append(left);if(moreHref)box.append(link('See all →','',moreHref));return box;}
 function empty(title,message){const box=el('div','empty');box.append(el('strong','',title),el('span','',message));return box;}
 function inList(list,id){return state[list].some(x=>x.id===id);}
 function toggle(list,item){const safe=tidy(item);if(!safe)return;if(inList(list,safe.id))state[list]=state[list].filter(x=>x.id!==safe.id);else{const stored={...safe};if(list==='saved')stored.price=null;state[list]=mergeInterests(state[list],stored);}saveState();}
-function imageFrame(item,cls='item-image'){
-  const image=el('div',cls);const unavailable=()=>{image.classList.add('no-image');image.append(el('span','image-missing','Cover unavailable'));};
-  if(!item.image){unavailable();return image;}
-  const img=document.createElement('img');img.alt='';img.loading='lazy';img.decoding='async';let triedFallback=false;
-  const fallback=()=>{const next=img.dataset.smallArtwork?item.image:item.imageFallback;delete img.dataset.smallArtwork;if(!triedFallback&&next&&next!==img.src){triedFallback=true;img.src=next;return;}img.remove();unavailable();};
-  img.addEventListener('error',()=>{image.dataset.imageStatus='load-failed';fallback();});img.addEventListener('load',()=>{if(img.naturalWidth<img.getBoundingClientRect().width*.9){image.dataset.imageStatus='too-small';fallback();}else image.dataset.imageStatus='loaded';});
-  image.append(img);requestAnimationFrame(()=>{if(!img.isConnected)return;const source=chooseArtwork(item,image.getBoundingClientRect().width,window.devicePixelRatio||1);if(source===item.imageFallback&&source!==item.image)img.dataset.smallArtwork=item.image;img.src=source;});return image;
+function imageFrame(item,cls='item-image',priority=false){
+  const frame=el('div',cls+' artwork-loading'),sources=[...new Set([item.image,item.imageFallback].map(allowedImage).filter(Boolean).flatMap(source=>[optimizedArtworkUrl(source),source]))];let attempt=0;
+  const unavailable=failed=>{frame.classList.remove('artwork-loading');frame.classList.add('no-image');frame.dataset.imageStatus=failed?'load-failed':'not-supplied';
+    const cover=el('div','title-artwork');cover.setAttribute('aria-hidden','true');cover.dataset.kind=item.qlooType;cover.append(el('span','artwork-kind',item.kind==='book'?'BOOK':item.qlooType==='videogame'?'GAME':item.qlooType==='tv_show'?'SCREEN':'INTEREST'),el('strong','artwork-title',item.title),el('span','artwork-note',failed?'Artwork could not load':item.source==='Qloo'?'Qloo suggestion':item.source==='Your entry'?'Your interest':'Artwork not supplied'));frame.append(cover);
+    if(failed){const retry=btn('Retry artwork','artwork-retry',()=>{retry.remove();cover.remove();frame.classList.remove('no-image');frame.classList.add('artwork-loading');attempt=0;frame.append(img);img.src=sources[0];});frame.append(retry);}
+  };
+  const img=document.createElement('img');img.alt='';img.loading=priority?'eager':'lazy';img.decoding='async';img.fetchPriority=priority?'high':'auto';img.width=item.qlooType==='book'?210:460;img.height=item.qlooType==='book'?315:260;
+  if(!sources.length){unavailable(false);return frame;}
+  const fallback=()=>{if(++attempt<sources.length){img.src=sources[attempt];return;}img.remove();unavailable(true);};
+  img.addEventListener('error',fallback);img.addEventListener('load',()=>{if(img.naturalWidth<=1||img.naturalHeight<=1){fallback();return;}frame.dataset.imageStatus='loaded';frame.classList.remove('artwork-loading');});
+  frame.append(img);img.src=sources[0];return frame;
 }
-window.addEventListener('resize',()=>{for(const img of document.querySelectorAll('img[data-small-artwork]')){if(img.getBoundingClientRect().width>200){img.src=img.dataset.smallArtwork;delete img.dataset.smallArtwork;}}},{passive:true});
 function card(item){
   const article=el('article',`item-card item-${item.kind}`),image=imageFrame(item);
   image.append(el('span','source-pill',item.source));
@@ -38,14 +42,21 @@ function card(item){
   const bookmark=btn(inList('saved',item.id)?'Saved':'Save','button secondary tiny',()=>{toggle('saved',item);const saved=inList('saved',item.id);bookmark.textContent=saved?'Saved':'Save';bookmark.setAttribute('aria-pressed',String(saved));bookmark.setAttribute('aria-label',`${saved?'Saved':'Save'}: ${item.title}`);if(location.hash.startsWith('#/saved'))render();});bookmark.setAttribute('aria-pressed',String(inList('saved',item.id)));bookmark.setAttribute('aria-label',`${inList('saved',item.id)?'Saved':'Save'}: ${item.title}`);
   actions.append(interest,bookmark);const url=allowedUrl(item.url);if(url){const source=external('View source ↗',url,'button secondary tiny');source.setAttribute('aria-label',`View source for ${item.title} on ${item.source} (opens in a new tab)`);actions.append(source);}body.append(actions);article.append(image,body);return article;
 }
-const catalogPool=createInFlightPool();
-function catalog(kind,q=''){return catalogPool.run(JSON.stringify([kind,q]),async()=>{const url=new URL('/api/catalog',location.origin);url.searchParams.set('kind',kind);if(q)url.searchParams.set('q',q);let res;try{res=await fetch(url,{signal:AbortSignal.timeout(15000)});}catch{throw new Error('The source could not be reached. Please try again.');}let body;try{body=await res.json();}catch{throw new Error('The source returned an unreadable response.');}if(!res.ok)throw new Error(body.error||'Could not load this source.');return body;});}
+const catalogPool=createInFlightPool(),catalogCache=new Map();
+function catalog(kind,q='',page=0){const cacheKey=JSON.stringify([kind,q,page]),cached=catalogCache.get(cacheKey);if(cached&&Date.now()-cached.at<180000)return Promise.resolve(cached.data);
+  return catalogPool.run(cacheKey,async()=>{const url=new URL('/api/catalog',location.origin);url.searchParams.set('kind',kind);if(q)url.searchParams.set('q',q);if(page)url.searchParams.set('page',String(page));let res;try{res=await fetch(url,{signal:AbortSignal.timeout(15000)});}catch{throw new Error('The source could not be reached. Please try again.');}let body;try{body=await res.json();}catch{throw new Error('The source returned an unreadable response.');}if(!res.ok)throw new Error(body.error||'Could not load this source.');catalogCache.set(cacheKey,{at:Date.now(),data:body});if(catalogCache.size>40)catalogCache.delete(catalogCache.keys().next().value);return body;});}
 const searchGates=new WeakMap();
-async function showCatalog(box,kind,q=''){
+async function showCatalog(box,kind,q='',{preview=false}={}){
   let gate=searchGates.get(box);if(!gate){gate=createLatestGate();searchGates.set(box,gate);}const isCurrent=gate.begin();
   clear(box);box.setAttribute('aria-busy','true');box.append(el('p','loading','Loading from the source…'));
-  try{const data=await catalog(kind,q);if(!box.isConnected||!isCurrent())return;clear(box);if(data.requiresQuery){box.append(empty('Search the catalog','Enter at least two characters to find titles.'));return;}if(!data.items.length){box.append(empty('No results','Try a different search.'));return;}const grid=el('div','cards');for(const item of data.items){const safe=tidy(item);if(safe)grid.append(card(safe));}box.append(grid);}
-  catch(e){if(box.isConnected&&isCurrent()){clear(box);const error=empty('Could not load this source',e.message);error.append(btn('Try again','button secondary tiny',()=>showCatalog(box,kind,q)));box.append(error);}}
+  const source=kind==='books'?'Open Library':kind==='games'?'CheapShark':'TVmaze',grid=el('div','cards'),summary=el('p','catalog-summary'),more=el('div','catalog-pagination');summary.setAttribute('role','status');const seen=new Set();let nextPage=0;
+  const append=data=>{for(const candidate of (preview?data.items.slice(0,6):data.items)){const item=tidy(candidate);if(item&&!seen.has(item.id)){seen.add(item.id);grid.append(card(item));}}clear(more);
+    summary.textContent=`${seen.size} ${source} result${seen.size===1?'':'s'}${Number.isSafeInteger(data.total)?' · '+data.total.toLocaleString()+' records found':''}. Catalog results; use For you for Qloo suggestions.`;
+    if(!preview&&data.hasMore&&Number.isSafeInteger(data.nextPage)){nextPage=data.nextPage;const load=btn('Load more','button secondary',async()=>{load.disabled=true;load.textContent='Loading…';try{const next=await catalog(kind,q,nextPage);if(box.isConnected&&isCurrent())append(next);}catch(error){if(box.isConnected&&isCurrent()){load.disabled=false;load.textContent='Try loading more again';summary.textContent=error.message+' Existing results were kept.';}}});more.append(load);}
+    else if(!preview)more.append(el('p','tip',kind==='shows'||kind==='anime'?'These are the matches returned by TVmaze. Refine your title to find another show.':data.pageLimitReached?'Refine your search to find more titles beyond this browsing limit.':data.hasMore?'Refine your search to find more titles.':'You have reached the end of these source results.'));
+  };
+  try{const data=await catalog(kind,q);if(!box.isConnected||!isCurrent())return;clear(box);if(data.requiresQuery){box.append(empty('Search the catalog','Enter at least two characters to find titles.'));return;}if(!data.items.length){box.append(empty('No results','Try a different search.'));return;}box.append(summary,grid,more);append(data);}
+  catch(e){if(box.isConnected&&isCurrent()){clear(box);const error=empty('Could not load this source',e.message);error.append(btn('Try again','button secondary tiny',()=>showCatalog(box,kind,q,{preview})));box.append(error);}}
   finally{if(box.isConnected&&isCurrent())box.removeAttribute('aria-busy');}
 }
 const categories=[
@@ -79,12 +90,12 @@ function categoryCard(category){
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),path=document.createElementNS('http://www.w3.org/2000/svg','path');svg.setAttribute('viewBox','0 0 24 24');path.setAttribute('d',paths[category.title]??'m12 3 9 9-9 9-9-9 9-9Zm0 5v8m-4-4h8');svg.append(path);icon.append(svg);
   body.append(el('strong','',category.title),el('small','',category.detail));a.append(icon,body);return a;
 }
-function instrument(count,caption){const fig=el('figure','instrument'),image=document.createElement('img');image.src=`/instrument/count-${Math.min(4,Math.max(0,count))}.svg`;image.alt='';image.width=520;image.height=280;const text=el('figcaption','instrument-caption',caption);fig.append(image,text);return {fig,image,text};}
+function instrument(count,caption){return createInstrument(count,caption);}
 async function showFeature(target){
   target.setAttribute('aria-busy','true');target.append(el('p','feature-loading','Finding a current game offer…'));
   try{const data=await catalog('games');if(!target.isConnected)return;const items=data.items.map(tidy).filter(x=>x?.url);clear(target);const item=items.find(x=>x.heroImage)??items[0];
     if(!item){target.append(el('p','feature-loading','No current game offers are available.'));return;}
-    const panel=el('div','feature-content'),image=imageFrame({...item,image:item.heroImage??item.image,imageFallback:item.heroImage?item.image:item.imageFallback},'feature-image'),copy=el('div','feature-copy');copy.append(el('span','feature-kicker','A LIVE PC GAME OFFER'),el('h2','',item.title));
+    const panel=el('div','feature-content'),image=imageFrame(item,'feature-image',true),copy=el('div','feature-copy');copy.append(el('span','feature-kicker','A LIVE PC GAME OFFER'),el('h2','',item.title));
     const price=item.price!==null?`$${item.price} USD · `:'',offer=external('View offer ↗',item.url,'button feature-button');offer.setAttribute('aria-label',`View offer for ${item.title} on CheapShark (opens in a new tab)`);copy.append(el('p','',`${price}via CheapShark · price may change`),offer);panel.append(image,copy);target.append(panel);
   }catch{if(target.isConnected){clear(target);target.append(el('p','feature-loading','Game offers are unavailable right now.'));}}
   finally{if(target.isConnected)target.removeAttribute('aria-busy');}
@@ -113,12 +124,12 @@ function home(root){
   const browse=el('section','section');browse.append(sectionTitle('Start exploring','Search real catalogs or find a game to play together.'));const grid=el('div','category-grid');for(const c of categories.filter(c=>!c.qloo))grid.append(categoryCard(c));browse.append(grid);root.append(browse);
   const examples=el('section','section example-section');examples.append(sectionTitle('A few places to start','Examples from real catalogs. Search for anything you like.'));const exampleGrid=el('div','example-grid'),animeExample=el('div','example-slot'),bookExample=el('div','example-slot');exampleGrid.append(animeExample,bookExample);examples.append(exampleGrid);root.append(examples);showExample(animeExample,'anime','One Piece','ANIME');showExample(bookExample,'books','Dune','BOOKS');
   const interestSection=el('section','interest-section'),interestCopy=el('div','interest-copy');interestCopy.append(el('p','eyebrow','MAKE IT YOURS'),el('h2','','Keep the things you love close.'),el('p','','Build your list of favorites on this device, ready for your next discovery.'),link('Manage interests →','text-link','#/taste'));const meter=instrument(Math.min(state.interests.length,4),state.interests.length?`${state.interests.length} saved · use up to 4 in a search`:'Start with something you love');meter.fig.dataset.homeInstrument='';interestSection.append(interestCopy,meter.fig);root.append(interestSection);
-  const deals=el('section','section');deals.append(sectionTitle('A few PC games to explore','Live offers from CheapShark · USD prices may change.','#/explore/games'));const target=el('div');deals.append(target);root.append(deals);showCatalog(target,'games');
-  const more=el('section','section more-section');more.append(sectionTitle('More ways to discover',qlooReady?'Explore across your interests.':'These experiences require taste discovery, which is currently unavailable.'));const moreGrid=el('div','category-grid');for(const c of categories.filter(c=>c.qloo))moreGrid.append(categoryCard(c));more.append(moreGrid);root.append(more);
+  const deals=el('section','section');deals.append(sectionTitle('A few PC games to explore','Live offers from CheapShark · USD prices may change.','#/explore/games'));const target=el('div');deals.append(target);root.append(deals);showCatalog(target,'games','',{preview:true});
+  const more=el('section','section more-section');more.append(sectionTitle('More ways to discover','Use your interests to explore cross-category suggestions from Qloo.'));const moreGrid=el('div','category-grid');for(const c of categories.filter(c=>c.qloo))moreGrid.append(categoryCard(c));more.append(moreGrid);root.append(more);
 }
 function explore(root,requested='games',initialQuery=''){
   const allowed=['anime','games','books','shows'],kind=allowed.includes(requested)?requested:'games';
-  root.append(heading('LIVE CATALOGS','Explore the things you love.','Search real sources, then add your favorites to your interests.'));
+  root.append(heading('LIVE CATALOGS','Explore the things you love.','Browse the named catalogs, then use For you to discover Qloo taste connections.'));
   const bar=el('div','toolbar');for(const [value,label] of [['anime','Anime'],['games','PC games'],['books','Books'],['shows','TV shows']])bar.append(link(label,`chip${kind===value?' active':''}`,`#/explore/${value}`));root.append(bar);
   const notice=el('p','tip',kind==='anime'?'Anime results are shows labeled Anime by TVmaze; the catalog may not include every title.':kind==='games'?'Prices are supplied by CheapShark in USD, can change, and may vary by region.':kind==='books'?'Book records and covers are supplied by Open Library.':'Show records are supplied by TVmaze (CC BY-SA).');root.append(notice);
   const form=el('form','search-form'),field=el('div','field'),label=el('label','','Search titles');label.htmlFor='catalog-query';const input=document.createElement('input');input.id='catalog-query';input.type='search';input.maxLength=100;input.value=initialQuery.slice(0,100);input.placeholder=kind==='anime'?'Search an anime title':kind==='games'?'Search PC games':kind==='books'?'Search a book or author':'Search a TV show';field.append(label,input);const submit=el('button','button primary','Search');submit.type='submit';form.append(field,submit);root.append(form);
@@ -144,7 +155,7 @@ async function requestDiscovery(input){
   if(!res.ok)throw new Error(data.error||'Could not find suggestions.');return data;
 }
 function showDiscovery(output,data){
-  clear(output);output.append(sectionTitle('Suggestions from Qloo',`Based on: ${data.resolved.join(', ')}. An association is not a guarantee.`));
+  clear(output);output.append(sectionTitle('Suggestions from Qloo',`${data.items.length} returned · based on: ${data.resolved.join(', ')}. An association is not a guarantee.`));
   if(data.unresolved.length)output.append(el('p','notice',`Could not match exactly: ${data.unresolved.join(', ')}. These interests were not used.`));
   if(!data.items.length){output.append(empty('No suggestions returned','Try other favorites or another category.'));return;}
   const list=el('div','result-list');for(const item of data.items){const row=el('div','result-item'),text=el('div'),actions=el('div','result-actions');text.append(el('strong','',item.title),el('small','',item.detail));
@@ -157,21 +168,21 @@ function showDiscovery(output,data){
 }
 function forYou(root,modeName='all'){
   const mode=modes[modeName]??modes.all;root.append(heading('QLOO TASTE DISCOVERY',mode.title,mode.desc));
-  if(!qlooReady)root.append(el('div','notice','Taste discovery is temporarily unavailable. You can still search real catalogs and build a local interests list.'));
+  const connection=el('div','notice',qlooPending?'Checking taste discovery…':'Taste discovery is temporarily unavailable. You can still search real catalogs and build a local interests list.');connection.dataset.qlooNotice='';connection.hidden=qlooReady;root.append(connection);
   if(mode.note)root.append(el('p','tip',mode.note));
   if(!state.interests.length){const box=empty('Start with a few favorites','Add interests from the real catalogs first. Your list stays on this device.');box.append(link('Explore catalogs','button primary','#/explore'));root.append(box);return;}
   const panel=el('section','panel');panel.append(el('h2','','Choose interests to use'),el('p','tip','Select up to four. These names will be sent to Qloo when you request suggestions.'));
   const choices=el('div','profile-strip');state.interests.forEach((item,i)=>{const label=el('label','interest-chip'),input=document.createElement('input');input.type='checkbox';input.value=String(i);input.checked=i<4;label.append(input,document.createTextNode(`${item.title}${item.year?` · ${item.year}`:''}`));choices.append(label);});panel.append(choices);
   const meter=instrument(Math.min(state.interests.length,4),`${Math.min(state.interests.length,4)} of 4 interests selected`);meter.fig.classList.add('selection-instrument');meter.text.setAttribute('aria-live','polite');panel.append(meter.fig);
-  const controls=el('div','row'),targetField=el('div','field'),label=el('label','','What would you like to discover?');label.htmlFor='target-type';const select=document.createElement('select');select.id='target-type';for(const [value,text] of mode.targets){const option=el('option','',text);option.value=value;select.append(option);}targetField.append(label,select);controls.append(targetField);
+  const controls=el('div','row'),targetField=el('div','field'),label=el('label','','What would you like to discover?');label.htmlFor='target-type';const select=document.createElement('select');select.id='target-type';for(const [value,text] of mode.targets){const option=el('option','',text);option.value=value;select.append(option);}targetField.append(label,select);controls.append(targetField);const sizeField=el('div','field'),sizeLabel=el('label','','Number of suggestions');sizeLabel.htmlFor='suggestion-count';const size=document.createElement('select');size.id='suggestion-count';for(const value of [12,24,48]){const option=el('option','',`Up to ${value}`);option.value=String(value);option.selected=value===24;size.append(option);}sizeField.append(sizeLabel,size);controls.append(sizeField);
   let city;if(['travel','events','meetups'].includes(modeName)){const field=el('div','field'),cl=el('label','','City for place results');cl.htmlFor='city';city=document.createElement('input');city.id='city';city.placeholder='For example, Lahore';city.maxLength=100;field.append(cl,city);controls.append(field);}panel.append(controls);
   let discovering=false;const output=el('div','section spaced');output.setAttribute('aria-live','polite');const submit=btn('Find suggestions','button primary',async()=>{
     const selected=[...choices.querySelectorAll('input:checked')].map(x=>state.interests[Number(x.value)]).filter(Boolean);
     if(!selected.length||selected.length>4){clear(output);output.append(empty('Choose one to four interests','You can change your selection before trying again.'));return;}
     clear(output);output.append(el('p','loading','Checking your interests with Qloo…'));output.setAttribute('aria-busy','true');discovering=true;updateSelection();
-    try{const data=await requestDiscovery({seeds:selected.map(x=>({title:x.title,qlooType:x.qlooType,...(Number.isInteger(x.year)?{year:x.year}:{})})),target:select.value,city:city?.value?.trim()??''});if(!output.isConnected)return;showDiscovery(output,data);
+    try{const data=await requestDiscovery({seeds:selected.map(x=>({title:x.title,qlooType:x.qlooType,...(Number.isInteger(x.year)?{year:x.year}:{})})),target:select.value,take:Number(size.value),city:city?.value?.trim()??''});if(!output.isConnected)return;showDiscovery(output,data);
     }catch(error){if(output.isConnected){clear(output);output.append(empty('Could not find suggestions',error.message));}}finally{if(output.isConnected)output.removeAttribute('aria-busy');discovering=false;updateSelection();}
-  });const updateSelection=()=>{const summary=selectionSummary(choices.querySelectorAll('input:checked').length);meter.image.src=`/instrument/count-${summary.frame}.svg`;meter.text.textContent=summary.label;submit.disabled=discovering||!qlooReady||!summary.valid;};choices.addEventListener('change',updateSelection);updateSelection();panel.append(el('p','tip','Results depend on Qloo catalog coverage. For shows with the same name, add the version from our catalog so its year can help identify it.'),submit,output);root.append(panel);
+  });const updateSelection=()=>{const summary=selectionSummary(choices.querySelectorAll('input:checked').length);meter.update(summary.frame,summary.label);submit.disabled=discovering||!qlooReady||!summary.valid;};choices.addEventListener('change',updateSelection);qlooWatchers.set(panel,updateSelection);updateSelection();panel.append(el('p','tip','Results depend on Qloo catalog coverage. For shows with the same name, add the version from our catalog so its year can help identify it.'),submit,output);root.append(panel);
 }
 function taste(root){
   root.append(heading('YOUR PROFILE','The things you enjoy.','Your interests stay on this device and can be used across discovery categories.'));
@@ -221,15 +232,15 @@ function collectionTransfer(){
   label.append(input);actions.append(download,label);panel.append(copy,actions,status,el('p','transfer-privacy','The downloaded file is not encrypted. It does not include game-night entries.'));return panel;
 }
 function saved(root){
-  root.append(heading('YOUR COLLECTION','Saved for later.','Your saved items are kept in this browser. Move your collection to another device below.'));
+  root.append(heading('YOUR COLLECTION','Saved for later.','Search and organize your saved titles. Connect a private cloud collection below to use another device.'));
   if(!state.saved.length){const box=empty('Nothing saved yet','Explore catalogs and save anything that catches your eye.');box.append(link('Explore','button primary','#/explore'));root.append(box,cloudPanel(),collectionTransfer());return;}
   let view='grid';try{view=localStorage.getItem('find-your-next-library-view')==='list'?'list':'grid';}catch{}
   const toolbar=el('div','library-toolbar'),searchField=el('div','field library-search'),label=el('label','','Search your collection');label.htmlFor='collection-query';
   const search=document.createElement('input');search.id='collection-query';search.type='search';search.placeholder='Find a saved title';search.maxLength=150;searchField.append(label,search);
   const tools=el('div','library-tools'),sort=document.createElement('select');sort.setAttribute('aria-label','Sort collection');for(const [value,name] of [['recent','Recently saved'],['title','Title: A to Z']]){const option=el('option','',name);option.value=value;sort.append(option);}
   const views=el('div','library-view');views.setAttribute('role','group');views.setAttribute('aria-label','Collection layout');const gridButton=btn('Grid','',()=>setView('grid')),listButton=btn('List','',()=>setView('list'));views.append(gridButton,listButton);tools.append(sort,views);toolbar.append(searchField,tools);
-  const count=el('p','library-count');count.setAttribute('role','status');const results=el('div');root.append(toolbar,count,results);
-  function draw(){const query=normalizeName(search.value),items=state.saved.filter(item=>normalizeName(item.title).includes(query));if(sort.value==='title')items.sort((a,b)=>a.title.localeCompare(b.title));else items.reverse();
+  const filters=el('div','collection-filters');filters.setAttribute('role','group');filters.setAttribute('aria-label','Collection type');let category='all';const filterButtons=[];for(const [value,name] of [['all','All'],['book','Books'],['videogame','Games'],['tv_show','TV & anime'],['other','Other']]){const total=state.saved.filter(x=>value==='all'||(value==='other'?!['book','videogame','tv_show'].includes(x.qlooType):x.qlooType===value)).length;const button=btn(name+' '+total,'chip',()=>{category=value;draw();});button.dataset.category=value;filterButtons.push(button);filters.append(button);}const count=el('p','library-count');count.setAttribute('role','status');const results=el('div');root.append(toolbar,filters,count,results);
+  function draw(){const query=normalizeName(search.value),items=state.saved.filter(item=>normalizeName(item.title).includes(query)&&(category==='all'||(category==='other'?!['book','videogame','tv_show'].includes(item.qlooType):item.qlooType===category)));for(const button of filterButtons)button.setAttribute('aria-pressed',String(button.dataset.category===category));if(sort.value==='title')items.sort((a,b)=>a.title.localeCompare(b.title));else items.reverse();
     count.textContent=`${items.length} of ${state.saved.length} saved item${state.saved.length===1?'':'s'}`;clear(results);results.className=view==='list'?'library-list':'cards';gridButton.setAttribute('aria-pressed',String(view==='grid'));listButton.setAttribute('aria-pressed',String(view==='list'));
     if(!items.length){results.className='';results.append(empty('No matching titles','Try a different name or clear your search.'));}else for(const item of items)results.append(card(item));
   }
@@ -261,7 +272,7 @@ function group(root){
     try{const data=await requestDiscovery({seeds:seeds.map(title=>({title,qlooType:'videogame'})),target:'videogame'});if(suggestions.isConnected)showDiscovery(suggestions,data);}
     catch(error){if(suggestions.isConnected){clear(suggestions);suggestions.append(empty('Could not find suggestions',error.message));}}
     finally{if(suggestions.isConnected)suggestions.removeAttribute('aria-busy');find.disabled=!qlooReady;}
-  });find.disabled=!qlooReady;discovery.append(find,suggestions);root.append(discovery);
+  });find.disabled=!qlooReady;qlooWatchers.set(discovery,()=>{find.disabled=!qlooReady;});discovery.append(find,suggestions);root.append(discovery);
 }
 function render({focus=false,preserveScroll=false}={}){
   const previousScroll=window.scrollY;
@@ -280,5 +291,5 @@ cloud=new CloudCollection({
   onStatus:()=>window.dispatchEvent(new Event('cloud-status'))
 });
 window.addEventListener('online',()=>cloud.sync());let lastCloudFocus=0;window.addEventListener('focus',()=>{if(Date.now()-lastCloudFocus>10000){lastCloudFocus=Date.now();cloud.sync();}});
-async function init(){qlooReady=await checkDiscoveryAvailability();$('#side-status').textContent=qlooReady?'Discover from your interests':'Taste discovery unavailable';render();}
+async function init(){render();qlooReady=await checkDiscoveryAvailability();qlooPending=false;$('#side-status').textContent=qlooReady?'Discover from your interests':'Taste discovery unavailable';document.querySelectorAll('[data-qloo-notice]').forEach(node=>{node.hidden=qlooReady;if(!qlooReady)node.textContent='Taste discovery is temporarily unavailable. You can still search real catalogs and build a local interests list.';});for(const [node,update] of qlooWatchers){if(node.isConnected)update();else qlooWatchers.delete(node);}}
 init();cloud.init();

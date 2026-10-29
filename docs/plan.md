@@ -22,7 +22,7 @@ Find Your Next is a cross-category discovery workspace for people who want to ac
 
 ## Provider and API plan
 
-- Qloo: search exact entity names and insights by target type; use response entity IDs and provenance. A sensitive event key is configured. Private checks succeeded; current production quota failures still require diagnosis and repeatable live verification.
+- Qloo: search exact entity names and insights by target type; use response entity IDs and provenance. A sensitive event key is configured. Private checks succeeded; the quota validator was repaired and bounded real Preview/Production checks now pass.
 - TVmaze: search anime and TV shows, with source links and CC BY-SA attribution. Anime results are filtered by TVmaze's own genre labels, not guaranteed comprehensive. https://www.tvmaze.com/api.
 - CheapShark: live PC games/deals; USD, prices can change; use CheapShark redirect links, per https://apidocs.cheapshark.com/.
 - Open Library search: books with author, publication year, cover and a source link; https://openlibrary.org/dev/docs/api/search.

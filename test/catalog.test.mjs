@@ -44,29 +44,67 @@ test('books need a query and preserve Open Library source attribution', async ()
   assert.equal(result.items[0].source,'Open Library');
 });
 
-test('catalogs prefer high-resolution covers and preserve a trusted fallback', async () => {
+test('catalog cards prefer compact covers and preserve the same source artwork as fallback', async () => {
   const tvFetcher=async()=>({ok:true,json:async()=>[{show:{id:3,name:'A Show',genres:['Anime'],image:{original:'https://static.tvmaze.com/uploads/images/original_untouched/1/3.jpg',medium:'https://static.tvmaze.com/uploads/images/medium_portrait/1/3.jpg'}}}]});
   const tv=(await getCatalog('anime','show',{fetcher:tvFetcher})).items[0];
-  assert.equal(tv.image,'https://static.tvmaze.com/uploads/images/original_untouched/1/3.jpg');
-  assert.equal(tv.imageFallback,'https://static.tvmaze.com/uploads/images/medium_portrait/1/3.jpg');
+  assert.equal(tv.image,'https://static.tvmaze.com/uploads/images/medium_portrait/1/3.jpg');
+  assert.equal(tv.imageFallback,'https://static.tvmaze.com/uploads/images/original_untouched/1/3.jpg');
   const booksFetcher=async()=>({ok:true,json:async()=>({docs:[{key:'/works/OL3W',title:'A Book',cover_i:123}]})});
   const book=(await getCatalog('books','book',{fetcher:booksFetcher})).items[0];
-  assert.equal(book.image,'https://covers.openlibrary.org/b/id/123-L.jpg');
-  assert.equal(book.imageFallback,'https://covers.openlibrary.org/b/id/123-M.jpg');
+  assert.equal(book.image,'https://covers.openlibrary.org/b/id/123-M.jpg?default=false');
+  assert.equal(book.imageFallback,'https://covers.openlibrary.org/b/id/123-L.jpg?default=false');
 });
 
-test('game covers use a numeric Steam app id with the provider thumbnail as fallback', async () => {
+test('game covers prefer the actual provider thumbnail and never request a speculative library hero', async () => {
   const thumb='https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2347080/capsule_231x87.jpg';
   const fetcher=async()=>({ok:true,json:async()=>[
     {gameID:'2',title:'A Game',salePrice:'5',dealID:'one',steamAppID:'2347080',thumb},
     {gameID:'3',title:'Bad ID',salePrice:'5',dealID:'two',steamAppID:'../../bad',thumb:'https://evil.example/image.jpg'}
   ]});
   const [game,bad]=(await getCatalog('games','',{fetcher})).items;
-  assert.equal(game.image,'https://cdn.cloudflare.steamstatic.com/steam/apps/2347080/header.jpg');
-  assert.equal(game.heroImage,'https://cdn.cloudflare.steamstatic.com/steam/apps/2347080/library_hero.jpg');
-  assert.equal(game.imageFallback,thumb);
+  assert.equal(game.image,thumb);
+  assert.equal(game.heroImage,null);
+  assert.equal(game.imageFallback,'https://shared.fastly.steamstatic.com/steam/apps/2347080/header.jpg');
   assert.equal(bad.image,null);
   assert.equal(bad.heroImage,null);
+});
+
+test('book pages use Open Library pagination and report real totals without a twelve-title cutoff',async()=>{
+  const urls=[];
+  const fetcher=async value=>{const url=new URL(value);urls.push(url);const page=Number(url.searchParams.get('page'));return {ok:true,json:async()=>({numFound:49,docs:Array.from({length:page===3?1:24},(_,i)=>({key:`/works/OL${(page-1)*24+i+1}W`,title:`Book ${(page-1)*24+i+1}`}))})};};
+  const first=await getCatalog('books','books',{fetcher});const second=await getCatalog('books','books',{fetcher,page:1});const last=await getCatalog('books','books',{fetcher,page:2});
+  assert.equal(first.items.length,24);assert.equal(first.source,'Open Library');assert.equal(first.total,49);assert.equal(first.hasMore,true);assert.equal(first.nextPage,1);
+  assert.equal(second.items[0].id,'openlibrary:/works/OL25W');assert.equal(second.nextPage,2);assert.equal(last.items.length,1);assert.equal(last.hasMore,false);assert.equal(last.nextPage,null);
+  assert.deepEqual(urls.map(u=>u.searchParams.get('page')),['1','2','3']);assert.ok(urls.every(u=>u.searchParams.get('limit')==='24'));
+});
+
+test('game pages follow the source last-page header and preserve descriptive requests',async()=>{
+  const urls=[];
+  const fetcher=async(value,options)=>{const url=new URL(value);urls.push(url);assert.match(options.headers['User-Agent'],/FindYourNext/);return {ok:true,headers:{get:name=>name==='x-total-page-count'?'1':null},json:async()=>Array.from({length:24},(_,i)=>({title:`Game ${i}`,gameID:String(i),dealID:`deal-${i}`,salePrice:'2.50'}))};};
+  const first=await getCatalog('games','game',{fetcher}),last=await getCatalog('games','game',{fetcher,page:1});
+  assert.equal(first.items.length,24);assert.equal(first.hasMore,true);assert.equal(first.nextPage,1);assert.equal(last.hasMore,false);assert.equal(last.nextPage,null);assert.equal(first.total,undefined);
+  assert.deepEqual(urls.map(u=>u.searchParams.get('pageNumber')),['0','1']);assert.ok(urls.every(u=>u.searchParams.get('pageSize')==='24'&&u.searchParams.get('title')==='game'));
+});
+
+test('TVmaze returns its complete matching search set and does not invent another page',async()=>{
+  const fetcher=async()=>({ok:true,json:async()=>Array.from({length:15},(_,i)=>({show:{id:i+1,name:`A Show ${i}`,genres:['Drama']}}))});
+  const result=await getCatalog('shows','show',{fetcher});assert.equal(result.items.length,15);assert.equal(result.searchComplete,true);assert.equal(result.hasMore,false);assert.equal(result.nextPage,null);
+  await assert.rejects(getCatalog('shows','show',{fetcher,page:1}),e=>e.status===400&&/single search result/.test(e.message));
+});
+
+test('pagination rejects invalid bounds and distinguishes the app page boundary from source exhaustion',async()=>{
+  const fetcher=async()=>{throw new Error('Must reject before requesting a provider');};
+  for(const page of [-1,21,1.5,'1',NaN])await assert.rejects(getCatalog('games','',{fetcher,page}),e=>e.status===400);
+  const limited=await getCatalog('books','book',{page:20,fetcher:async()=>({ok:true,json:async()=>({num_found:1000,docs:[{key:'/works/OL100W',title:'A Book'}]})})});
+  assert.equal(limited.hasMore,false);assert.equal(limited.pageLimitReached,true);assert.equal(limited.total,1000);
+});
+
+test('catalog HTTP handler rejects malformed page values without touching a provider',async()=>{
+  const {default:handler}=await import('../api/catalog.js');
+  for(const page of ['-1','1.5','21','00','1e1','%20','not-a-page']){
+    const response={code:200,setHeader(){},status(v){this.code=v;return this;},json(v){this.body=v;return this;}};
+    await handler({method:'GET',url:'/api/catalog?kind=games&page='+page},response);assert.equal(response.code,400);
+  }
 });
 
 test('production image policy permits Open Library cover redirects', async () => {

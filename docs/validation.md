@@ -1,50 +1,49 @@
-# Find Your Next: current validation
+# Find Your Next: release validation
 
-**Reviewed:** October 29, 2026. **Production:** https://find-your-next-qloo.vercel.app/ . This report separates the active backend, tested source and earlier public frontend. It is an engineering review, not an accessibility or security certification.
+**Reviewed:** October 30, 2026 (Pakistan). **Public website:** https://find-your-next-qloo.vercel.app/ . This is a bounded engineering review, not an accessibility or security certification.
 
-## Release status
+## Release and actual API evidence
 
-The public frontend still serves the earlier Vercel release. A fresh Portal 2 → books production request returned HTTP 503 from the quota guard in this review. The error remains unresolved; no successful repeatable public Qloo journey is claimed.
+The frontend is released to Production. Final deployment: `dpl_EN1uf6ezWvUiM4mskgVrEYNGjk6K`. The owner-approved release followed protected Preview checks; no public diagnostic endpoint or deployment-protection bypass was added.
 
-The owner explicitly approved a protected Preview deployment of `17c1484`, followed by Production only after successful live checks. The API's documented default Preview request was rejected by automatic approval review because the target was considered ambiguous; the explicit `preview` target then passed review but was rejected by Vercel's API with HTTP 400. The official CLI supports an explicit Preview target and requires a separate device authorization. No new Vercel deployment or protection bypass was created. The newer cloud source described below builds on that tested commit and is prepared for review.
+- On the public website, Portal 2 → books returned **24 real Qloo entities** with per-interest explanation data. Portal 2 + Minecraft → games returned **24 real entities**. Before Production, the candidate returned **48 books** for Portal 2 and the hardened Preview returned **24 destinations** for Radiohead. These are actual UI requests using the configured server-side key, not catalog fixtures or the configuration flag alone. They do not measure recommendation quality or every supported input combination.
+- The earlier 503 reproduced in Preview as the fixed log code `quota_contention`. The adapter had reused the HTTP GET ETag representation for a storage conditional write. It now obtains the write validator from `head()`, verifies its version against the uncached body, and retries only genuine revision conflicts. Transport quoting/weak prefixes are normalized only for comparison; the storage validator is passed unchanged to `put()`. Counters, limits and the private quota record were preserved. The key was never read or printed.
+- The actual game source page returned 24 offers representing **13 unique games**. Earlier, seven unique cards lost their covers because the GamersGate image host was absent from the app allowlist. After the targeted fix, **all 13 Preview cards loaded optimized images**, with zero missing-artwork tiles in that tested page.
+- Open Library live checks returned 24 records on each of pages 0 and 1 with source-reported total and next-page metadata. TVmaze returned two real matches for One Piece; the app does not fill this finite set with unrelated titles. Game offers are de-duplicated, so page size is not a guaranteed number of distinct games. The live CheapShark request worked from the deployed Preview; separate cloud-shell Node requests timed out. This difference is retained rather than described as a universal provider outage.
+- The deployed Vercel collection proxy completed encrypted create, second-client restore and cross-client removal using two isolated client states. The synthetic cloud copy was deleted and local interests remained. The dedicated database had zero collection records after cleanup. Earlier browser tests connected two isolated browser profiles to the real Supabase backend through a local copy of the proxy. A separate headless Production-browser attempt was blocked by this test environment's proxy certificate trust; certificate checks were not disabled. No physical-device result is claimed.
 
-The dedicated free Supabase project was successfully created after the owner freed a slot. The `collection-sync` function and private SQL schema are active. Preview and Production environment configuration now points to it; existing deployments do not automatically receive new environment values.
+## Verification
 
-## Checks completed
-
-| Area | Observed result | Limit |
+| Area | Observed result | Scope and limit |
 | --- | --- | --- |
-| Node suite | 57 passing tests | Matching, providers, HTTP, quotas, encryption, merge, offline recovery, conflicts and proxy validation; not every possible state. |
-| Core browser journeys | Chromium 153 touch emulation, 390 × 844: search, save/reload/remove, grid/list, filter/sort, manual import/export in independent profiles, group matching, validation, retry, navigation and keyboard skip link passed | Controlled catalogs/Qloo responses; physical hardware was not used. |
-| Cloud backend, live | Created/read/updated one synthetic encrypted collection; wrong token denied, stale write/delete returned conflict, malformed envelope rejected, anonymous table/RPC access denied | The verifier deletes only its own record; no user content is inspected. |
-| Cloud browser, live | Two isolated profiles connected with a private key; additions/removals synchronized; reload persisted; deleting cloud copy retained local items; key reveal/hide and invalid-key feedback worked | Local frontend/proxy with real Supabase, not the unreleased public Vercel frontend or two physical devices. |
-| Cloud failure handling | Controlled offline/error/retry UI, capacity conflicts, tampered ciphertext, incorrect encryption key and failed connection storage tested | Does not establish resilience to every network or browser failure. |
-| Accessibility automation | 34 states across 390 and 1440 px reported zero detected axe-core 4.14.0 WCAG-tagged violations, including connected/error/revealed-key cloud states | Privacy-dialog contrast included incomplete checks requiring manual assessment. No actual NVDA/VoiceOver audit. |
-| Responsive layout | No document overflow at 320, 390, 768, 1024 and 1440 px in tested journeys; cloud UI at 390 px passed | Not a mobile Safari, orientation or physical-phone result. |
-| Dependency audit | Online `npm audit --omit=dev`: zero known vulnerabilities | Registry result at review time, not proof that dependencies are vulnerability-free. |
-| Local load smoke | 600 requests, 20 workers, zero unexpected responses; p95 32.42 ms | One local process, no providers; not production capacity. |
-| Live HTTP probes | Source paths, package.json, .env and .git/config returned 404; invalid catalog kind returned 400; CSP, nosniff, referrer policy and HSTS were present | Small bounded probe set, not comprehensive penetration testing. |
-| Database access | RLS enabled; anon/authenticated cannot SELECT collection tables or execute collection RPC; security advisor had only two intentional no-policy INFO notices; performance advisor returned no notices | Supabase and service-role administrators remain trusted. |
+| Node tests | **70 passed**, zero failures | Includes actual raster conversion, host/path/redirect/stream limits, provider paging, selection bounds, platform parser failures, quotas, crypto/tampering, conflicts, HTTP and cloud admission. |
+| Browser journeys | Search, save/reload/remove, manual transfer, grid/list/filter/sort, source retry, group matching and simulated Qloo flows passed | Controlled provider responses; separate live requests are listed above. |
+| New interaction checks | Pagination keeps existing results on failure, retries and de-duplicates; valid compact covers remain; collection type filters work; carriage actually animates and reduced motion cancels it | Source fixtures and generated SVG geometry; no invented provider artwork. |
+| Responsive layout | **48 route/width combinations**, no document horizontal overflow: six routes at 320, 360, 390, 430, 768, 1024, 1440 and 1920 CSS px | Browser resizing, not a real phone or mobile Safari test. |
+| Accessibility automation | **34 states**, zero detected axe-core 4.14.0 WCAG-tagged violations | Three states included incomplete contrast checks (one brand-text check and two desktop dialog states). Actual VoiceOver/NVDA and a full manual audit remain unverified. |
+| Dependency audit | Online production audit: zero known vulnerabilities | Includes the pinned Sharp dependency; a registry result at test time, not proof of no vulnerabilities. |
+| Local load smoke | 600 requests, 20 workers, zero unexpected responses; p95 132.68 ms | One local process with no provider calls, not production capacity. |
+| Production negative probes | **30 live checks passed**, including source/credential-file exposure, malformed/oversized JSON, methods, result-count limits, capability admission, image-proxy SSRF admission, cross-origin preflight and security headers | Bounded owner-authorized script; no valid Qloo request or user record is used by the security smoke script. |
+| Database | RLS on, browser roles cannot read tables or execute private RPC; only two intentional no-policy INFO notices | [Supabase linter explanation](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy). No broad public policies were added. |
 
-Cloud uses browser AES-GCM encryption, independent HKDF-derived identifier/access/encryption values and revision-checked writes. The complete recovery key never enters a request URL or backend. Deleting the cloud copy keeps local items; disconnecting keeps both copies. There is no email recovery. See [cloud collections](cloud-collections.md) for the exact trust boundaries and limits.
+The initial live negative probe found malformed JSON producing a 500 through Vercel's body-parser getter. Both discovery and collection admission now catch that platform exception and return safe 400 responses; regression tests reproduce a throwing getter. Invalid inputs cannot reach the provider path. The final live smoke run passed all 30 checks, including malformed JSON returning 400.
 
-## Existing Qloo evidence and safeguards
+## Artwork, caching and motion
 
-Earlier bounded private live checks returned real Qloo results for Portal 2 → books, Portal 2 + Minecraft → games, One Piece (1999) → games, Radiohead → destinations and a Lahore place filter. An earlier public anime-to-games request also succeeded. Later public requests failed; private successes do not establish current production health or recommendation quality.
+Compact TVmaze artwork measured **28,852 bytes** versus **660,465 bytes** for the original of the same source cover, about 95.6% fewer bytes. The production artwork endpoint returned `image/webp`; a tested asset was 10,166 bytes and the second response reported a CDN `HIT`. End-to-end shell timings were dominated by this environment's network latency, so no universal millisecond speedup is claimed. Cold loads still depend on the source and network; subsequent eligible requests can use the site CDN and browser cache.
 
-A read-only dashboard inspection found the private quota record present, correctly shaped and below daily/lifetime limits. Its visitor hashes and contents were not copied into this report. The source logs only fixed quota phase codes to locate failures after deployment; it never logs keys, bodies, addresses or quota contents. A Vercel-only fallback accepts the platform-overwritten forwarded-address header; ordinary local requests cannot use it. Invalid primary headers fail closed.
+Artwork admission is shared by producer and browser. The optimizer accepts only fixed catalog hosts and image paths, revalidates redirects, limits input bytes and pixels, bounds concurrency/cache memory, and preserves aspect ratio without enlargement. Direct source fallback remains. A title tile identifies truly absent/unloadable artwork rather than inventing a cover.
 
-The Blob adapter reads uncached, bounds streamed records and conditionally writes the exact revision. It recognizes actual SDK conflict classes; only conditional conflicts retry. Provider quota is reserved before calls and is not refunded after partial failure. No quota record reset, budget increase, secret decryption or firewall/protection weakening was performed.
+The MIT Anatomy geometry now has independent pad/carriage layers and actual selection transitions, bounded pointer tilt, visibility cleanup and reduced-motion behavior. The automated browser check observed a running carriage animation and the correct nonzero static position with reduced motion.
 
-## Design and submission
+## Mobbin and REA
 
-The source implements the Mobbin-reviewed Apple Books list/grid interaction patterns: working collection layouts, search/sort, large serif headings and labeled mobile tabs. Original branding, icons, colors and SVG missing artwork are used. Phone thumbnails select compact TVmaze artwork; larger surfaces can request originals. [Design references](design-research.md).
+The implementation uses the reviewed [Apple Books collection filter/list pattern](https://mobbin.com/screens/d1ddc1d5-8b37-47a6-b03d-c75409076be7), with original branding and working controls. [Design notes](design-research.md).
 
-The public GitHub repository contains an MIT license, source, tests and setup instructions. The Devpost story distinguishes the current frontend from the tested source/backend. The 3:2 project thumbnail is already uploaded. The 15-image gallery and video remain deferred at the owner's request. No final contest submission has been made.
+REA was executed on the connected Windows device against the actual public book page. Its partial runtime capture observed the twelve-card earlier release. That attempt failed on a non-unique wait selector and reported unconfirmed cleanup; no successful complete REA capture is claimed. No matching owned Chrome process remained in the subsequent process check; unrelated profiles were not removed and no further REA browser was launched. Diagnosis and completed verification above also use source inspection, private fixed-code logs, actual browser interactions and independent tests; those are not mislabeled as REA results.
 
-## Outstanding evidence
+## Remaining limits
 
-- Authorize the CLI device session, deploy a protected Preview, locate and resolve the production quota failure using private fixed-code logs, and verify repeated live single/group Qloo requests. Release Production only after those checks pass, then repeat public smoke checks.
-- Test real phones and actual assistive technology. The connected Windows device had zero authorized Android devices and no NVDA binary at the standard install paths or command lookup. VoiceOver/iOS hardware was unavailable. Those checks remain pending, not passed.
-- Comprehensive penetration testing and independent accessibility/user studies are not completed. Existing tests are bounded engineering/security probes; no user impact, recommendation-quality or winning-probability claim is made.
-- Complete the Devpost eligibility/rules agreement with the owner before final submission. The start-date answer should account for Devpost project creation on October 27 and the first local code commit on October 28, rather than silently treating a commit as the start of all project activity.
+Physical phones, actual VoiceOver/NVDA, an independent comprehensive penetration test, and real-user recommendation-quality studies were not completed. The user explicitly accepted viewport resizing as the responsive check. Functional release, security probes and automation do not establish accessibility compliance or a winning probability. The cloud recovery key grants collection access and has no email recovery; see [cloud collections](cloud-collections.md).
+
+The public GitHub repository and Devpost text describe the released behavior. The 3:2 thumbnail already exists; the separate 15-image gallery and video remain deferred. Final hackathon submission requires the owner's explicit rules/eligibility agreement. No such agreement was attested on the owner's behalf.

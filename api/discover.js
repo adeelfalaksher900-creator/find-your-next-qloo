@@ -4,8 +4,9 @@ import {blobQuotaStore} from '../src/blob-quota.mjs';
 const configured=()=>Boolean(process.env.QLOO_API_KEY&&process.env.QLOO_PROXY_ENABLED==='true'&&process.env.BLOB_READ_WRITE_TOKEN&&process.env.RATE_LIMIT_SALT?.length>=32);
 async function readBody(req){
   if(Number(req.headers['content-length']??0)>5000)throw Object.assign(new Error('Request too large.'),{status:413});
-  if(req.body&&typeof req.body==='object'){if(JSON.stringify(req.body).length>5000)throw Object.assign(new Error('Request too large.'),{status:413});return req.body;}
-  let data='';for await(const chunk of req){data+=chunk;if(data.length>5000)throw Object.assign(new Error('Request too large.'),{status:413});}try{return JSON.parse(data);}catch{throw Object.assign(new Error('Invalid JSON.'),{status:400});}
+  let parsed;try{parsed=req.body;}catch{throw Object.assign(new Error('Invalid JSON.'),{status:400});}
+  if(parsed!==undefined){if(Buffer.byteLength(JSON.stringify(parsed))>5000)throw Object.assign(new Error('Request too large.'),{status:413});return parsed;}
+  const chunks=[];let size=0;for await(const chunk of req){const bytes=Buffer.from(chunk);size+=bytes.length;if(size>5000)throw Object.assign(new Error('Request too large.'),{status:413});chunks.push(bytes);}try{return JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{throw Object.assign(new Error('Invalid JSON.'),{status:400});}
 }
 export default async function handler(req,res){
   res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Cache-Control','no-store');

@@ -2,7 +2,8 @@ const bad=(message,status=400)=>Object.assign(new Error(message),{status});
 async function readJson(req){
   if(String(req.headers['content-type']??'').split(';')[0].trim().toLowerCase()!=='application/json')throw bad('Use JSON.',415);
   if(Number(req.headers['content-length']??0)>280000)throw bad('Collection is too large.',413);
-  if(req.body&&typeof req.body==='object'){if(Buffer.byteLength(JSON.stringify(req.body))>280000)throw bad('Collection is too large.',413);return req.body;}
+  let parsed;try{parsed=req.body;}catch{throw bad('Invalid collection request.');}
+  if(parsed!==undefined){if(Buffer.byteLength(JSON.stringify(parsed))>280000)throw bad('Collection is too large.',413);return parsed;}
   const parts=[];let size=0;for await(const chunk of req){const bytes=Buffer.from(chunk);size+=bytes.length;if(size>280000)throw bad('Collection is too large.',413);parts.push(bytes);}
   try{return JSON.parse(Buffer.concat(parts).toString('utf8'));}catch{throw bad('Invalid collection request.');}
 }
