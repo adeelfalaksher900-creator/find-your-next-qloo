@@ -1,12 +1,14 @@
+import {CloudCollection} from './cloud.js';
 import {commonGames,mergeInterests,selectionSummary,createManualInterest,summarizePlaytime,createLatestGate,createInFlightPool,checkDiscoveryAvailability,normalizeName,parseCollectionFile,mergeCollection,chooseArtwork} from './core.js';
 const $=s=>document.querySelector(s), key='find-your-next-v1';
 const validTypes=new Set(['tv_show','movie','videogame','artist','book','podcast','person','place','destination','brand']);
+let cloud=null;
 let state={interests:[],saved:[],group:[{games:'',minutes:''},{games:'',minutes:''}]}, qlooReady=false, transferMessage='';
 function tidy(item){if(!item||typeof item!=='object'||typeof item.id!=='string'||!item.id.trim()||typeof item.title!=='string'||!item.title.trim()||!validTypes.has(item.qlooType))return null;return {id:item.id.slice(0,200),title:item.title.slice(0,150),kind:String(item.kind??'').slice(0,30),qlooType:item.qlooType,source:String(item.source??'').slice(0,40),detail:String(item.detail??'').slice(0,150),year:Number.isInteger(item.year)&&item.year>=1800&&item.year<=2100?item.year:null,url:allowedUrl(item.url),image:allowedImage(item.image),imageFallback:allowedImage(item.imageFallback),heroImage:allowedImage(item.heroImage),price:typeof item.price==='string'&&/^\d+(\.\d{2})?$/.test(item.price)?item.price:null};}
 function allowedUrl(value){try{const u=new URL(value);return u.protocol==='https:'&&['www.tvmaze.com','openlibrary.org','www.cheapshark.com'].includes(u.hostname)?u.href:null;}catch{return null;}}
 function allowedImage(value){try{const u=new URL(value);return u.protocol==='https:'&&['static.tvmaze.com','covers.openlibrary.org','shared.fastly.steamstatic.com','cdn.cloudflare.steamstatic.com','images.gog-statics.com','cdn.akamai.steamstatic.com'].includes(u.hostname)?u.href:null;}catch{return null;}}
 try{const stored=JSON.parse(localStorage.getItem(key)||'{}');for(const field of ['interests','saved'])if(Array.isArray(stored[field]))state[field]=stored[field].map(tidy).filter(Boolean).slice(0,60);if(Array.isArray(stored.group)&&stored.group.length>=2)state.group=stored.group.slice(0,4).map(p=>({games:String(p.games??'').slice(0,3000),minutes:String(p.minutes??'').slice(0,5)}));}catch{}
-function saveState(){let saved=true;try{localStorage.setItem(key,JSON.stringify(state));}catch{saved=false;alert('This browser could not save your changes on this device.');}updateCounts();return saved;}
+function saveState(notifyCloud=true){let saved=true;try{localStorage.setItem(key,JSON.stringify(state));}catch{saved=false;alert('This browser could not save your changes on this device.');}updateCounts();if(saved&&notifyCloud)cloud?.changed();return saved;}
 function updateCounts(){document.querySelectorAll('[data-saved-count]').forEach(x=>x.textContent=String(state.saved.length));document.querySelectorAll('[data-taste-count]').forEach(x=>x.textContent=String(state.interests.length));const meter=$('[data-home-instrument]');if(meter){meter.querySelector('img').src=`/instrument/count-${Math.min(state.interests.length,4)}.svg`;meter.querySelector('figcaption').textContent=state.interests.length?`${state.interests.length} saved · use up to 4 in a search`:'Start with something you love';}}
 function el(tag,cls='',txt=''){const x=document.createElement(tag);if(cls)x.className=cls;if(txt)x.textContent=txt;return x;}
 function btn(text,cls,fn){const b=el('button',cls,text);b.type='button';b.addEventListener('click',fn);return b;}
@@ -180,6 +182,19 @@ function taste(root){
   if(!state.interests.length){const box=empty('No interests yet','Add an interest above or find something in the catalogs.');box.append(link('Explore catalogs','button secondary','#/explore'));root.append(box);return;}
   const grid=el('div','cards');for(const item of state.interests)grid.append(card(item));root.append(grid);const actions=el('div','toolbar spaced');actions.append(link('Discover with Qloo','button primary','#/for-you'),btn('Clear interests','button secondary',()=>{if(confirm('Remove all interests from this device?')){state.interests=[];saveState();render();}}));root.append(actions);
 }
+function cloudPanel(){
+  const panel=el('section','panel cloud-panel'),header=el('div','cloud-heading');header.append(el('h2','','Your collection, across devices'),el('span','badge','Optional'));panel.append(header,el('p','tip','Connect a private cloud collection to save changes automatically and pick up on another device. Game-night entries stay on this device.'));
+  const status=el('p','cloud-status');status.setAttribute('role','status');const offline=el('div'),online=el('div');
+  const create=btn('Create cloud collection','button primary',async()=>{try{await cloud.create();}catch{}});create.id='cloud-create';
+  const form=el('form','cloud-connect'),field=el('div','field'),label=el('label','','Connect with a sync key');label.htmlFor='cloud-key';const input=document.createElement('input');input.id='cloud-key';input.type='password';input.autocomplete='off';input.spellcheck=false;input.maxLength=60;input.placeholder='fyn1_…';const connect=el('button','button secondary','Connect');connect.type='submit';field.append(label,input);form.append(field,connect);form.addEventListener('submit',async e=>{e.preventDefault();try{await cloud.connect(input.value);input.value='';}catch{}});
+  offline.append(create,form);
+  const actions=el('div','toolbar'),sync=btn('Sync now','button primary',()=>cloud.sync()),copy=btn('Copy sync key','button secondary',async()=>{try{await navigator.clipboard.writeText(cloud.key());status.textContent='Sync key copied. Keep it private.';}catch{status.textContent='Copy was unavailable. Reveal the key and copy it manually.';}}),show=btn('Show sync key','button secondary',()=>{const reveal=secret.type==='password';secret.type=reveal?'text':'password';secret.value=reveal?cloud.key():'';show.textContent=reveal?'Hide sync key':'Show sync key';show.setAttribute('aria-pressed',String(reveal));});sync.id='cloud-sync-now';show.setAttribute('aria-pressed','false');
+  const secretLabel=el('label','field-label','Your private sync key');secretLabel.htmlFor='cloud-recovery-key';const secret=document.createElement('input');secret.id='cloud-recovery-key';secret.type='password';secret.readOnly=true;secret.autocomplete='off';secret.spellcheck=false;secret.placeholder='Use Show sync key or Copy sync key';
+  const disconnect=btn('Disconnect this device','button secondary',()=>cloud.disconnect()),remove=btn('Delete cloud copy','button secondary',async()=>{if(confirm('Permanently delete this cloud copy? Local items on this device will stay.'))try{await cloud.deleteCloud();}catch{}});actions.append(sync,copy,show);const accountActions=el('div','toolbar spaced');accountActions.append(disconnect,remove);
+  online.append(actions,secretLabel,secret,el('p','tip','Anyone with this key can connect to the collection. Keep it private; a lost key cannot be recovered by email.'),accountActions);panel.append(status,offline,online);
+  const update=()=>{const connected=!!cloud?.context;offline.hidden=connected;online.hidden=!connected;status.textContent=cloud?.message||'Checking cloud collection…';status.classList.toggle('error',!!cloud?.error);for(const button of [create,connect,sync,disconnect,remove])button.disabled=!cloud?.configured||!!cloud?.busy;input.disabled=!cloud?.configured||!!cloud?.busy;if(!connected){secret.value='';secret.type='password';show.textContent='Show sync key';show.setAttribute('aria-pressed','false');}};
+  update();const listener=()=>{if(!panel.isConnected){window.removeEventListener('cloud-status',listener);return;}update();};window.addEventListener('cloud-status',listener);return panel;
+}
 function collectionTransfer(){
   const panel=el('section','transfer-panel'),copy=el('div','transfer-copy');
   const icon=el('span','transfer-icon','↗');icon.setAttribute('aria-hidden','true');
@@ -207,7 +222,7 @@ function collectionTransfer(){
 }
 function saved(root){
   root.append(heading('YOUR COLLECTION','Saved for later.','Your saved items are kept in this browser. Move your collection to another device below.'));
-  if(!state.saved.length){const box=empty('Nothing saved yet','Explore catalogs and save anything that catches your eye.');box.append(link('Explore','button primary','#/explore'));root.append(box,collectionTransfer());return;}
+  if(!state.saved.length){const box=empty('Nothing saved yet','Explore catalogs and save anything that catches your eye.');box.append(link('Explore','button primary','#/explore'));root.append(box,cloudPanel(),collectionTransfer());return;}
   let view='grid';try{view=localStorage.getItem('find-your-next-library-view')==='list'?'list':'grid';}catch{}
   const toolbar=el('div','library-toolbar'),searchField=el('div','field library-search'),label=el('label','','Search your collection');label.htmlFor='collection-query';
   const search=document.createElement('input');search.id='collection-query';search.type='search';search.placeholder='Find a saved title';search.maxLength=150;searchField.append(label,search);
@@ -219,7 +234,7 @@ function saved(root){
     if(!items.length){results.className='';results.append(empty('No matching titles','Try a different name or clear your search.'));}else for(const item of items)results.append(card(item));
   }
   function setView(next){view=next;try{localStorage.setItem('find-your-next-library-view',view);}catch{}draw();}
-  search.addEventListener('input',draw);sort.addEventListener('change',draw);draw();root.append(collectionTransfer());
+  search.addEventListener('input',draw);sort.addEventListener('change',draw);draw();root.append(cloudPanel(),collectionTransfer());
 }
 function group(root){
   root.append(heading('PLAN TOGETHER','Make game night easier.','Find games in common and compare how long each person can play.'));
@@ -248,12 +263,22 @@ function group(root){
     finally{if(suggestions.isConnected)suggestions.removeAttribute('aria-busy');find.disabled=!qlooReady;}
   });find.disabled=!qlooReady;discovery.append(find,suggestions);root.append(discovery);
 }
-function render({focus=false}={}){
+function render({focus=false,preserveScroll=false}={}){
+  const previousScroll=window.scrollY;
   const [path,query='']=(location.hash.replace(/^#\/?/,'')||'home').split('?'),parts=path.split('/'),route=parts[0],root=$('#app');clear(root);
   document.querySelectorAll('[data-nav]').forEach(a=>{const active=a.dataset.nav===route;a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
-  if(route==='explore')explore(root,parts[1],new URLSearchParams(query).get('q')??'');else if(route==='for-you')forYou(root,parts[1]);else if(route==='group')group(root);else if(route==='saved')saved(root);else if(route==='taste')taste(root);else home(root);updateCounts();const title=root.querySelector('h1')?.textContent??'Find Your Next';document.title=`${title} — Find Your Next`;$('#main').setAttribute('aria-label',title);window.scrollTo(0,0);if(focus)$('#main').focus({preventScroll:true});
+  if(route==='explore')explore(root,parts[1],new URLSearchParams(query).get('q')??'');else if(route==='for-you')forYou(root,parts[1]);else if(route==='group')group(root);else if(route==='saved')saved(root);else if(route==='taste')taste(root);else home(root);updateCounts();const title=root.querySelector('h1')?.textContent??'Find Your Next';document.title=`${title} — Find Your Next`;$('#main').setAttribute('aria-label',title);window.scrollTo(0,preserveScroll?previousScroll:0);if(focus)$('#main').focus({preventScroll:true});
 }
 $('.skip').addEventListener('click',event=>{event.preventDefault();$('#main').focus();});
 $('#about-button').addEventListener('click',()=>$('#about-dialog').showModal());$('#about-close').addEventListener('click',()=>$('#about-dialog').close());window.addEventListener('hashchange',()=>render({focus:true}));
+function cleanCloudSnapshot(value){
+  const result={interests:[],saved:[]};for(const field of ['interests','saved']){if(!Array.isArray(value[field])||value[field].length>60)throw new Error('The cloud collection is invalid or too large.');const unique=new Map();for(const candidate of value[field]){const item=tidy(candidate);if(item)unique.set(item.id,item);}result[field]=[...unique.values()];}return result;
+}
+cloud=new CloudCollection({
+  getSnapshot:()=>structuredClone({interests:state.interests,saved:state.saved}),clean:cleanCloudSnapshot,
+  applySnapshot:value=>{const next=cleanCloudSnapshot(value);if(JSON.stringify(next)===JSON.stringify({interests:state.interests,saved:state.saved}))return;const previous=state;state={...state,...next};if(!saveState(false)){state=previous;updateCounts();throw new Error('This browser could not save the synced collection. Your local items were kept.');}const active=document.activeElement;if(!active?.matches('input,textarea,select')){const id=active?.id;render({preserveScroll:true});if(id)document.getElementById(id)?.focus({preventScroll:true});}else{active.addEventListener('blur',()=>{if(active.isConnected)render({preserveScroll:true});},{once:true});}},
+  onStatus:()=>window.dispatchEvent(new Event('cloud-status'))
+});
+window.addEventListener('online',()=>cloud.sync());let lastCloudFocus=0;window.addEventListener('focus',()=>{if(Date.now()-lastCloudFocus>10000){lastCloudFocus=Date.now();cloud.sync();}});
 async function init(){qlooReady=await checkDiscoveryAvailability();$('#side-status').textContent=qlooReady?'Discover from your interests':'Taste discovery unavailable';render();}
-init();
+init();cloud.init();

@@ -16,4 +16,4 @@ The hero was reviewed against [HBO Max's content-led hero](https://mobbin.com/si
 
 The 1536 × 1024 project thumbnail was generated with the built-in image tool and uploaded to Devpost. It is graphic branding, not evidence of a live product flow. The website itself does not load that bitmap. The optimized README version is about 67 KB.
 
-This source refresh has been tested locally. It has not been released to the production website because automatic approval review rejected the requested deployment.
+This source refresh has been tested locally. Optional encrypted cloud collection controls also passed live backend tests. It has not been released to the production website: the owner approved Preview then Production after live checks, but the API Preview target mismatch requires CLI device authorization before deployment.

@@ -23,6 +23,10 @@
     {
       "source": "/artwork-fallback.svg",
       "destination": "/public/artwork-fallback.svg"
+    },
+    {
+      "source": "/cloud.js",
+      "destination": "/public/cloud.js"
     }
   ],
   "headers": [

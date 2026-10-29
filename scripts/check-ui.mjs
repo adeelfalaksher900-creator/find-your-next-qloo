@@ -6,7 +6,7 @@ const env={...process.env,PORT:String(port),FYN_BASE_URL:`http://127.0.0.1:${por
 const server=spawn(process.execPath,['src/server.mjs'],{env,stdio:['ignore','pipe','inherit']});
 try{
   await Promise.race([once(server.stdout,'data'),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Local server did not start')),5000))]);
-  for(const script of ['browser-check.cjs','accessibility-check.cjs']){
+  for(const script of (process.env.FYN_UI_SCRIPTS?.split(',')??['browser-check.cjs','cloud-browser-check.cjs','accessibility-check.cjs','cloud-accessibility-check.cjs'])){
     const child=spawn(process.execPath,['scripts/'+script],{env,stdio:'inherit'});
     const [code]=await once(child,'exit');if(code!==0)throw new Error(script+' failed');
   }

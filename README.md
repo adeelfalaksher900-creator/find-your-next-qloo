@@ -14,7 +14,7 @@ Search anime and TV, books and PC-game offers from named sources. Keep a collect
 
 **Status:** A bounded private-build check exercised real Qloo search and insights, including anime-to-games, group games, destinations and places. On production, one anime-to-games request succeeded, but later group and single-interest requests returned 503 from the quota guard. The guard's production reliability is unresolved; the live Qloo flow is not ready for judges. Real-device and screen-reader testing and user validation also remain outstanding; see the validation report for the precise scope of checks.
 
-**Latest source:** The iOS-inspired refresh and collection search, sorting and grid/list views are tested locally and await deployment approval. The public website still serves the earlier release.
+**Latest source:** The iOS-inspired refresh, collection search/sorting, grid/list views and optional encrypted cross-device collections are implemented. The Supabase backend is active and passed live checks through a local copy of the app. The public Vercel website still serves the earlier release. The owner authorized protected Preview and then Production after live checks; CLI device authorization is the remaining deployment access step.
 
 ![Local preview of the refreshed interface](docs/assets/desktop-preview.jpg)
 
@@ -24,12 +24,12 @@ Search anime and TV, books and PC-game offers from named sources. Keep a collect
 
 - Browse current PC game offers from CheapShark, including source links and prices in USD. Prices and availability may change.
 - Search anime and TV shows through TVmaze and books through Open Library. Anime results are limited to shows TVmaze labels as Anime; coverage is not comprehensive.
-- Add catalog titles or manually enter favorites from supported categories in a device-local interest profile; save and remove items. The latest source adds collection search, title sorting and persistent grid/list layout controls. Download a collection file and import it on another device: imports merge rather than erase existing items. This is manual transfer, not automatic sync.
+- Add catalog titles or manually enter favorites from supported categories in a device-local interest profile; save and remove items. The latest source adds collection search, title sorting and persistent grid/list layout controls. Download a collection file and import it on another device: imports merge rather than erase existing items. Optional cloud collections synchronize interests and saved items across devices using a private recovery key. Manual transfer remains available.
 - A four-slot instrument displays the number of interests selected for a Qloo query; it is not a taste score.
 - Compare two to four people's entered game lists, ignoring differences in case and punctuation, and show the shortest playtime entered when everyone provides one. A separate group discovery action sends the first game entered for each person to Qloo as combined taste signals. It does not predict whether everyone will enjoy a suggestion. This does not compare calendars; users choose a time and check platform, ownership and game duration themselves.
 - Choose a Qloo outcome for anime/TV, games, books, artists, brands, gifts, travel, creator discovery, venue or event planning. The adapter resolves exact, unambiguous entity names and uses TVmaze's premiere year when available to distinguish shows with the same name. It requests Qloo insights and shows named inputs only when Qloo returns per-interest explanation data.
 
-Event and meetup pages provide prospective Qloo place or artist suggestions, not real event listings, dates or tickets. Gift suggestions are not verified product listings; game prices can be checked against CheapShark when a matching offer is returned. Creator suggestions do not verify willingness to collaborate. Travel results do not verify opening hours or reservations. No account, social network or automatic cross-device synchronization is implemented. Downloaded collections are unencrypted and exclude game-night entries.
+Event and meetup pages provide prospective Qloo place or artist suggestions, not real event listings, dates or tickets. Gift suggestions are not verified product listings; game prices can be checked against CheapShark when a matching offer is returned. Creator suggestions do not verify willingness to collaborate. Travel results do not verify opening hours or reservations. Cloud sync is optional and uses a private sync key rather than an email account. Game-night entries remain local. Downloaded collections are unencrypted and exclude game-night entries.
 
 ## Data flow
 
@@ -37,6 +37,8 @@ Event and meetup pages provide prospective Qloo place or artist suggestions, not
 flowchart TD
     U[Visitor's browser] --> S[Local interests and saved items]
     S --> F[Manual collection file]
+    S --> E[Optional browser encryption]
+    E --> V[Private Supabase collection]
     U --> G[Local group comparison]
     U --> C[Catalog endpoints]
     C --> D[TVmaze, Open Library, CheapShark]
@@ -45,7 +47,7 @@ flowchart TD
     L --> Q[Qloo search and insights]
 ```
 
-Catalog results are not Qloo recommendations. The user's selected titles are sent to Qloo only when requesting taste discovery. Local interests, saved items and group entries remain in browser storage. Exported collection files contain interests and saved items, not group entries, and should be kept private. To limit abuse, the server stores keyed hashes of visitor IP addresses and request counts in a private quota record; old visitor counts are removed on a later successful request in a new hourly window. The host may maintain its own logs. Do not enter personal information as an interest.
+Catalog results are not Qloo recommendations. The user's selected titles are sent to Qloo only when requesting taste discovery. Interests, saved items and group entries remain in browser storage. If cloud sync is enabled, only interests and saved items are additionally encrypted in the browser and synchronized to Supabase. The randomly generated sync key stays on the device and must be copied privately to connect another device. Anyone with the key can access or delete the collection; there is no email recovery. Exported collection files contain interests and saved items, not group entries, and should be kept private. To limit abuse, the server stores keyed hashes of visitor IP addresses and request counts in a private quota record; old visitor counts are removed on a later successful request in a new hourly window. The host may maintain its own logs. Do not enter personal information as an interest.
 
 ## Run
 
@@ -67,6 +69,14 @@ For a bounded live provider check without enabling the public proxy, supply `QLO
 
 The API has fixed provider hosts, whitelisted entity types, bounded input and upstream timeouts. The quota guard reduces key exhaustion but does not prevent distributed denial of service; the free storage tier itself has limits. Catalog sources have their own rate limits; the small server-side cache is per instance and is not a global traffic control. Live event listings and shopping inventory require additional authorized providers.
 
+## Optional encrypted cloud collections
+
+The source includes `supabase/schema.sql`, the `collection-sync` Edge Function, the browser cryptography/sync module and the Vercel proxy. Setup and security details are in [cloud collections](docs/cloud-collections.md). Set `COLLECTION_SYNC_URL` and `SUPABASE_PUBLISHABLE_KEY` in Vercel Preview and Production; never put a secret or service-role key in those fields. The Edge Function uses its automatic server-side secret to call a private RPC. RLS is enabled and browser roles have no table or RPC privileges.
+
+From Saved, create a collection, copy the sync key privately and connect it on the second device. Changes merge using a revision check; removals of existing items win over concurrent retention, while new items from both devices are kept. Each list holds at most 60 items. Disconnect keeps the cloud copy and local items; Delete cloud copy removes the remote copy and keeps local items. A browser sharing the same profile can access its stored connection.
+
+`npm run verify:cloud` requires `FYN_CLOUD_LIVE=yes` plus cloud configuration. It creates one synthetic encrypted collection, checks access denial and stale revisions, and removes its own test record. Browser checks use controlled cloud responses by default. `FYN_CLOUD_BROWSER_LIVE=yes` with the configured local server runs the two-profile cloud UI check against the real backend and cleans up its synthetic record. These checks do not contact Qloo.
+
 ## Sources and licenses
 
 - Code: MIT, see [LICENSE](LICENSE).
@@ -80,7 +90,7 @@ Existing Qloo projects already cover gifts and game discovery, including [Taste 
 
 ## Tests and gaps
 
-`npm test` exercises exact name resolution, year disambiguation, failed Qloo configuration, quota concurrency, catalog parsing, input validation, portable collection parsing, common-game matching, HTTP routes and a local redirect attack against a test key. `node scripts/load-check.mjs` sends a bounded 600-request load to a local process without calling providers.
+`npm test` exercises exact name resolution, year disambiguation, failed Qloo configuration, quota concurrency, catalog parsing, input validation, portable collection parsing, authenticated encryption/tampering, independent-device sync, offline merges, revision conflicts, proxy boundaries, common-game matching, HTTP routes and a local redirect attack against a test key. `node scripts/load-check.mjs` sends a bounded 600-request load to a local process without calling providers.
 
 For the optional browser checks, install Chrome or Chromium and install test-only tools without changing the lockfile (`npm install --no-save --no-package-lock --ignore-scripts playwright-core@1.58.2 axe-core@4.14.0`). Set `CHROME_PATH` to your browser executable if Playwright cannot find its own browser, then run `node scripts/check-ui.mjs`. The runner starts and stops a local server with Qloo disabled, then runs the interaction and accessibility suites. Both use controlled catalog responses. Set `FYN_BASE_URL` to another local test origin if needed; it must end in `/`. The accessibility script reports incomplete checks separately and returns a nonzero status for detected violations.
 

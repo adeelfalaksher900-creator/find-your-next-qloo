@@ -7,6 +7,7 @@
     "start": "node src/server.mjs",
     "test": "node --test",
     "verify:qloo": "node scripts/verify-qloo.mjs",
+    "verify:cloud": "node scripts/verify-cloud.mjs",
     "test:ui": "node scripts/check-ui.mjs",
     "test:load": "node scripts/load-check.mjs"
   },
