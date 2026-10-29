@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f6f7f9">
+  <meta name="description" content="Discover something worth sharing, from your own interests.">
+  <title>Find Your Next</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#/home"><span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i><i></i></span><strong>Find Your Next</strong></a>
+      <nav class="top-nav" aria-label="Main navigation">
+        <a href="#/home" data-nav="home">Home</a><a href="#/explore" data-nav="explore">Explore</a><a href="#/for-you" data-nav="for-you">For you</a><a href="#/group" data-nav="group">Together</a><a href="#/saved" data-nav="saved">Saved <span data-saved-count>0</span></a>
+      </nav>
+      <a class="top-action" href="#/taste">My interests <span data-taste-count>0</span></a>
+    </div>
+  </header>
+  <main id="main" tabindex="-1"><div id="app"><p class="loading" role="status">Loading your discovery space…</p></div></main>
+  <footer class="footer">
+    <div class="footer-grid">
+      <div class="footer-about"><strong>Find Your Next</strong><p>A little more room for the things you love.</p><p>Your collection stays in this browser. Move it to another device from Saved.</p></div>
+      <nav class="footer-column" aria-label="Explore Find Your Next"><strong>Explore</strong><a href="#/explore/anime">Anime</a><a href="#/explore/games">PC games</a><a href="#/explore/books">Books</a><a href="#/explore/shows">TV shows</a></nav>
+      <nav class="footer-column" aria-label="Your space"><strong>Your space</strong><a href="#/taste">My interests</a><a href="#/saved">Saved items</a><a href="#/group">Game night</a><a href="#/for-you">Taste discovery</a></nav>
+      <div class="footer-column"><strong>About the data</strong><button type="button" id="about-button">Sources &amp; privacy</button><a href="https://www.tvmaze.com/api" target="_blank" rel="noopener noreferrer">TVmaze <span aria-label="opens in a new tab">↗</span></a><a href="https://openlibrary.org/developers/api" target="_blank" rel="noopener noreferrer">Open Library <span aria-label="opens in a new tab">↗</span></a><a href="https://www.cheapshark.com/" target="_blank" rel="noopener noreferrer">CheapShark <span aria-label="opens in a new tab">↗</span></a></div>
+    </div>
+    <div class="footer-bottom"><span>Made for curious people. Catalog availability and prices can change.</span><span id="side-status" class="service-status" role="status">Checking taste discovery…</span></div>
+  </footer>
+  <nav class="bottom-nav" aria-label="Mobile navigation">
+    <a href="#/home" data-nav="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3l8.5 7.5M5.5 9.5V20h13V9.5M9.5 20v-6h5v6"/></svg>Home</a>
+    <a href="#/explore" data-nav="explore"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>Explore</a>
+    <a href="#/for-you" data-nav="for-you"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.3 5.8L20 11l-5.7 2.2L12 19l-2.3-5.8L4 11l5.7-2.2L12 3ZM18.5 16v4M16.5 18h4"/></svg>For you</a>
+    <a href="#/group" data-nav="group"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.3-3.2 2.2-5 5.5-5s5.2 1.8 5.5 5M16 6a3 3 0 0 1 0 6M17 14c2.1.4 3.3 2 3.5 4.5"/></svg>Together</a>
+    <a href="#/saved" data-nav="saved"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.7-7.5-10a4.2 4.2 0 0 1 7.5-2.6A4.2 4.2 0 0 1 19.5 10c0 5.3-7.5 10-7.5 10Z"/></svg>Saved</a>
+  </nav>
+  <dialog id="about-dialog" aria-labelledby="about-title"><div class="dialog-inner"><div class="dialog-head"><h2 id="about-title">Sources &amp; privacy</h2><button id="about-close" class="icon-btn" type="button" aria-label="Close"><span aria-hidden="true">×</span></button></div><p>Your interests, saved items and group inputs stay in your browser and do not sync automatically. Under Saved, you can download an unencrypted collection file and import it on another device; it excludes game-night entries. Clear browser storage to remove local data.</p><p>When you request taste discovery, the interests you choose are sent to Qloo. Do not add personal information as an interest. Qloo results are associations, not guarantees.</p><p>To limit abuse, the server keeps a keyed hash of your IP address and a request count in private storage. The app does not store your raw address there. Old visitor counts are cleared on a later successful discovery request after the hourly window; the hosting provider may keep its own logs.</p><p>Catalog results are provided by <a href="https://www.tvmaze.com/api" target="_blank" rel="noopener noreferrer">TVmaze</a> (CC BY-SA), <a href="https://openlibrary.org/developers/api" target="_blank" rel="noopener noreferrer">Open Library</a>, and <a href="https://www.cheapshark.com/" target="_blank" rel="noopener noreferrer">CheapShark</a>. PC prices are in USD and may change.</p><p>Qloo does not verify event schedules, tickets, product stock, streaming availability, or whether a creator is available to collaborate.</p></div></dialog>
+</body>
+</html>
