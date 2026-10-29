@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {blobQuotaStore} from '../src/blob-quota.mjs';
 import {reserveQuota} from '../src/quota.mjs';
+import {BlobPreconditionFailedError,BlobError} from '@vercel/blob';
 
 const client='a'.repeat(64);
 const record={version:1,day:'2026-10-29',dailyCalls:2,totalCalls:2,clients:{}};
@@ -25,9 +26,10 @@ test('Blob reader bounds streamed content even without a truthful size header',a
 });
 
 test('only actual conditional-write conflicts are retried',async()=>{
-  for(const name of ['BlobPreconditionFailedError','BlobAlreadyExistsError']){
-    const store=blobQuotaStore('quota/test.json',async()=>({put:async()=>{throw Object.assign(new Error('private detail'),{name});}}));
-    await assert.rejects(store.write(record,'"1"'),e=>e.code==='QUOTA_CONFLICT'&&!e.message.includes('private detail'));
+  for(const [error,etag] of [[new BlobPreconditionFailedError(),'"1"'],[new BlobError('This blob already exists.'),null]]){
+    assert.equal(error.name,'Error');
+    const store=blobQuotaStore('quota/test.json',async()=>({BlobPreconditionFailedError,BlobError,put:async()=>{throw error;}}));
+    await assert.rejects(store.write(record,etag),e=>e.code==='QUOTA_CONFLICT');
   }
   let writes=0;
   await assert.rejects(reserveQuota({store:{read:async()=>null,write:async()=>{writes++;throw new Error('private detail');}},client,cost:2}),e=>e.status===503&&e.code==='quota_write'&&!e.message.includes('private detail'));

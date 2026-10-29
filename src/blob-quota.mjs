@@ -12,9 +12,15 @@ export function blobQuotaStore(pathname='quota/discovery-v1.json',loadSdk=()=>im
       return {state:JSON.parse(Buffer.concat(chunks).toString('utf8')),etag:result.blob.etag};
     },
     async write(state,etag){
-      const {put}=await loadSdk();
+      const sdk=await loadSdk(),{put}=sdk;
       try{await put(pathname,JSON.stringify(state),{access:'private',addRandomSuffix:false,allowOverwrite:etag!==null,...(etag?{ifMatch:etag}:{}),contentType:'application/json',abortSignal:AbortSignal.timeout(6000)});}
-      catch(error){if(['BlobPreconditionFailedError','BlobAlreadyExistsError'].includes(error?.name))throw Object.assign(new Error('Concurrent quota update'),{code:'QUOTA_CONFLICT'});throw error;}
+      catch(error){
+        // The SDK's subclasses retain name='Error'; check their actual type.
+        const changed=typeof sdk.BlobPreconditionFailedError==='function'&&error instanceof sdk.BlobPreconditionFailedError;
+        const created=etag===null&&typeof sdk.BlobError==='function'&&error instanceof sdk.BlobError&&/already exists/i.test(error.message);
+        if(changed||created)throw Object.assign(new Error('Concurrent quota update'),{code:'QUOTA_CONFLICT'});
+        throw error;
+      }
     }
   };
 }

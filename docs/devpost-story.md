@@ -18,7 +18,7 @@ The taste discovery workflow sends up to four selected interests to our server, 
 
 The interface uses HTML, CSS and JavaScript, with a responsive mobile layout. Node.js serverless functions on Vercel fetch catalog and Qloo data; the Qloo key stays server-side. A private shared quota record reserves provider calls before a request, and the service rejects ambiguous matches rather than silently selecting the wrong title. TVmaze release years help distinguish versions of shows with identical names.
 
-We tested 45 automated cases covering matching, invalid input, provider errors, request ordering and quota guard behavior. Browser-emulated mobile checks covered search, saving, manual transfer, group matching and accessibility checks. These checks do not replace testing on physical phones, real screen readers or an independent penetration test. Recommendation quality and user impact have not yet been measured.
+The latest public source passes 49 automated tests covering matching, invalid input, provider errors, request ordering and quota guard behavior. It also adds collection search, sorting and grid/list controls in an iOS-inspired interface. This source refresh is tested locally and awaits deployment; the public website currently serves the earlier release. Browser-emulated mobile checks covered search, saving, manual transfer, group matching and accessibility checks. These checks do not replace testing on physical phones, real screen readers or an independent penetration test. Recommendation quality and user impact have not yet been measured.
 
 ## Challenges and what we learned
 
@@ -28,7 +28,7 @@ Next we need to resolve the production quota error, re-test repeated real Qloo j
 
 ## Team and sources
 
-Adeel Falak Sher and Raouf Khalid. Individual roles will be added once confirmed.
+Adeel Falak Sher and Raouf Khalid.
 
 Catalog and artwork sources: [TVmaze](https://www.tvmaze.com/api), [Open Library](https://openlibrary.org/developers/api) and [CheapShark](https://apidocs.cheapshark.com/). Taste connections use [Qloo](https://docs.qloo.com/). The interest illustration uses the MIT-licensed Anatomy kit; attribution is in the repository.
 
