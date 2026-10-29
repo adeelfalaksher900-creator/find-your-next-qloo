@@ -1,16 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {reserveQuota,clientFingerprint} from '../src/quota.mjs';
+import {reserveQuota,clientFingerprint,trustedClientAddress} from '../src/quota.mjs';
 
 function memoryStore(){
   let record=null,revision=0;
   return {
     async read(){await Promise.resolve();return record?{state:structuredClone(record),etag:String(revision)}:null;},
-    async write(next,etag){await Promise.resolve();if((record?String(revision):null)!==etag)throw new Error('conflict');record=structuredClone(next);revision++;},
+    async write(next,etag){await Promise.resolve();if((record?String(revision):null)!==etag)throw Object.assign(new Error('conflict'),{code:'QUOTA_CONFLICT'});record=structuredClone(next);revision++;},
     inspect(){return structuredClone(record);}
   };
 }
 const A='a'.repeat(64),B='b'.repeat(64),time=Date.UTC(2026,9,29,12),limits={daily:8,total:12,perClient:2};
+
+test('only a Vercel runtime can use the platform-overwritten fallback header',()=>{
+  const headers={'x-forwarded-for':'192.0.2.10'};
+  assert.equal(trustedClientAddress(headers),undefined);
+  assert.equal(trustedClientAddress(headers,true),'192.0.2.10');
+  assert.equal(trustedClientAddress({...headers,'x-vercel-forwarded-for':'invalid'},true),'invalid');
+  assert.throws(()=>clientFingerprint(trustedClientAddress({...headers,'x-vercel-forwarded-for':['192.0.2.10']},true),'a'.repeat(40)));
+  assert.throws(()=>clientFingerprint(trustedClientAddress({'x-forwarded-for':'192.0.2.10, 192.0.2.11'},true),'a'.repeat(40)));
+});
 
 test('reserves provider calls before use and enforces a shared daily budget',async()=>{
   const store=memoryStore();

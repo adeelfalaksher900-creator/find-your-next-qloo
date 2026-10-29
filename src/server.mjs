@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 import catalog from '../api/catalog.js';
 import discover from '../api/discover.js';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
-const files=new Map([['/',['public/index.html','text/html; charset=utf-8']],['/app.js',['public/app.js','text/javascript; charset=utf-8']],['/core.js',['public/core.js','text/javascript; charset=utf-8']],['/style.css',['public/style.css','text/css; charset=utf-8']]]);
+const files=new Map([['/',['public/index.html','text/html; charset=utf-8']],['/app.js',['public/app.js','text/javascript; charset=utf-8']],['/core.js',['public/core.js','text/javascript; charset=utf-8']],['/style.css',['public/style.css','text/css; charset=utf-8']],['/favicon.svg',['public/favicon.svg','image/svg+xml']],['/artwork-fallback.svg',['public/artwork-fallback.svg','image/svg+xml']]]);
 for(let count=0;count<=4;count++)files.set(`/instrument/count-${count}.svg`,[`public/instrument/count-${count}.svg`,'image/svg+xml']);
 const server=createServer(async(req,res)=>{
   res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');

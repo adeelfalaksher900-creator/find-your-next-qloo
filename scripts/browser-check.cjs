@@ -8,7 +8,7 @@ const fixtures={
  shows:{id:'tvmaze:2',title:'Breaking Bad',kind:'show',qlooType:'tv_show',source:'TVmaze',detail:'Drama',url:'https://www.tvmaze.com/shows/2/example',image:null}
 };
 (async()=>{
- const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})});
+ const browser=await chromium.launch(await require('./browser-runtime.cjs').launchOptions());
  try {
  const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true,reducedMotion:'reduce'});
  const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));let failCatalog=false;
@@ -34,6 +34,16 @@ const fixtures={
  const hostileCard=otherPage.locator('.item-card').filter({has:otherPage.getByRole('heading',{name:hostile.saved[0].title})});await hostileCard.waitFor();assert.equal(await hostileCard.locator('img[onerror]').count(),0);assert.equal(await hostileCard.getByRole('link',{name:/View source/}).count(),0);
  console.log('PASS hostile import renders text and rejects untrusted URLs');
  await other.close();console.log('PASS collection download and import across isolated browser profiles; invalid file preserves existing items');
+ await page.goto(base+'#/explore/games');await page.getByRole('button',{name:'Save: Portal 2',exact:true}).tap();
+ await page.goto(base+'#/saved');await page.getByRole('button',{name:'List',exact:true}).tap();
+ assert.equal(await page.locator('.library-list .item-card').count(),2);
+ await page.reload();await page.locator('.library-list .item-card').first().waitFor();
+ assert.equal(await page.getByRole('button',{name:'List',exact:true}).getAttribute('aria-pressed'),'true');
+ await page.getByLabel('Search your collection').fill('not a saved title');await page.getByText('No matching titles').waitFor();
+ await page.getByLabel('Search your collection').fill('');await page.getByLabel('Sort collection').selectOption('title');
+ assert.deepEqual(await page.locator('.library-list h3').allTextContents(),['One Piece','Portal 2']);
+ await page.getByRole('button',{name:'Grid',exact:true}).tap();assert.equal(await page.locator('.cards .item-card').count(),2);
+ console.log('PASS collection list/grid, search, alphabetical sort and saved layout preference');
  await page.locator(".bottom-nav a[href='#/group']").tap();
  await page.locator('#group-games-0').fill('Portal 2, Minecraft');await page.locator('#group-games-1').fill('portal 2, Stardew Valley');
  await page.locator('#group-minutes-0').fill('0');await page.getByRole('button',{name:'Find common games'}).tap();await page.getByText('Check playtime').waitFor();

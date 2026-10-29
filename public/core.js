@@ -61,10 +61,11 @@ export function mergeCollection(current, imported, sanitize) {
   }
   return result;
 }
-// TVmaze's medium portraits are 210 pixels wide; keep a small safety margin.
+// Use compact 210px covers for thumbnails, including high-density phones.
+// Larger presentation surfaces retain the original artwork.
 export function chooseArtwork(item, cssWidth, pixelRatio=1) {
-  const width=Number(cssWidth),ratio=Number(pixelRatio);
-  if(item.source==='TVmaze'&&item.imageFallback?.includes('/medium_portrait/')&&width>0&&ratio>0&&width*ratio<=190)return item.imageFallback;
+  const width=Number(cssWidth);
+  if(item.source==='TVmaze'&&item.imageFallback?.includes('/medium_portrait/')&&width>0&&width<=200)return item.imageFallback;
   return item.image;
 }
 export function selectionSummary(count) {

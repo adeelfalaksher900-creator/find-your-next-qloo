@@ -26,7 +26,7 @@ function imageFrame(item,cls='item-image'){
   img.addEventListener('error',()=>{image.dataset.imageStatus='load-failed';fallback();});img.addEventListener('load',()=>{if(img.naturalWidth<img.getBoundingClientRect().width*.9){image.dataset.imageStatus='too-small';fallback();}else image.dataset.imageStatus='loaded';});
   image.append(img);requestAnimationFrame(()=>{if(!img.isConnected)return;const source=chooseArtwork(item,image.getBoundingClientRect().width,window.devicePixelRatio||1);if(source===item.imageFallback&&source!==item.image)img.dataset.smallArtwork=item.image;img.src=source;});return image;
 }
-window.addEventListener('resize',()=>{for(const img of document.querySelectorAll('img[data-small-artwork]')){if(img.getBoundingClientRect().width*(window.devicePixelRatio||1)>190){img.src=img.dataset.smallArtwork;delete img.dataset.smallArtwork;}}},{passive:true});
+window.addEventListener('resize',()=>{for(const img of document.querySelectorAll('img[data-small-artwork]')){if(img.getBoundingClientRect().width>200){img.src=img.dataset.smallArtwork;delete img.dataset.smallArtwork;}}},{passive:true});
 function card(item){
   const article=el('article',`item-card item-${item.kind}`),image=imageFrame(item);
   image.append(el('span','source-pill',item.source));
@@ -62,7 +62,21 @@ const categories=[
   {icon:'◌',title:'Podcasts',detail:'Find something to hear',href:'#/for-you/podcasts',qloo:true},
   {icon:'◎',title:'Brands',detail:'Explore different styles',href:'#/for-you/brands',qloo:true}
 ];
-function categoryCard(category){const a=link('','category-card',category.href),icon=el('span','category-icon',category.icon),body=el('span');icon.setAttribute('aria-hidden','true');body.append(el('strong','',category.title),el('small','',category.detail));a.append(icon,body);return a;}
+function categoryCard(category){
+  const paths={
+    Anime:'m12 3 2.8 5.8 6.4.9-4.6 4.5 1.1 6.3L12 17.5l-5.7 3 1.1-6.3L2.8 9.7l6.4-.9L12 3Z',
+    'PC games':'M7 7h10l4 9c.8 2.5-1.3 4-3 2l-3-3H9l-3 3c-1.7 2-3.8.5-3-2l4-9ZM7 10v4M5 12h4M16 11h.1M18 13h.1',
+    Books:'M12 6C9 4 5 4 3 5v14c3-1 6-1 9 1 3-2 6-2 9-1V5c-2-1-6-1-9 1Zm0 0v14',
+    'TV shows':'M3 5h18v13H3V5Zm5 16h8M12 18v3',
+    'Game night':'M8 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8 0a3 3 0 1 0 0-6M2 20c0-4 2-6 6-6s6 2 6 6m2-6c4 0 6 2 6 6',
+    'Gift ideas':'M3 9h18v4H3V9Zm2 4v8h14v-8M12 9v12M12 9C3 9 5 1 9 4l3 5Zm0 0c9 0 7-8 3-5l-3 5Z',
+    'Travel & places':'M12 21s7-7 7-12A7 7 0 0 0 5 9c0 5 7 12 7 12Zm0-9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
+    'Music':'M9 17V5l11-2v12M9 5l11-2M9 17c-4-2-7 0-6 3s6 1 6-3Zm11-2c-4-2-7 0-6 3s6 1 6-3Z'
+  };
+  const a=link('','category-card',category.href),icon=el('span','category-icon'),body=el('span');icon.setAttribute('aria-hidden','true');
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),path=document.createElementNS('http://www.w3.org/2000/svg','path');svg.setAttribute('viewBox','0 0 24 24');path.setAttribute('d',paths[category.title]??'m12 3 9 9-9 9-9-9 9-9Zm0 5v8m-4-4h8');svg.append(path);icon.append(svg);
+  body.append(el('strong','',category.title),el('small','',category.detail));a.append(icon,body);return a;
+}
 function instrument(count,caption){const fig=el('figure','instrument'),image=document.createElement('img');image.src=`/instrument/count-${Math.min(4,Math.max(0,count))}.svg`;image.alt='';image.width=520;image.height=280;const text=el('figcaption','instrument-caption',caption);fig.append(image,text);return {fig,image,text};}
 async function showFeature(target){
   target.setAttribute('aria-busy','true');target.append(el('p','feature-loading','Finding a current game offer…'));
@@ -123,7 +137,7 @@ const modes={
   books:{title:'Discover books',desc:'Explore books connected to the things you enjoy.',targets:[['book','Books']]}
 };
 async function requestDiscovery(input){
-  const res=await fetch('/api/discover',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});
+  let res;try{res=await fetch('/api/discover',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input),signal:AbortSignal.timeout(75000)});}catch{throw new Error('Taste discovery could not be reached. Please wait a moment, then try again.');}
   let data;try{data=await res.json();}catch{throw new Error('The discovery service returned an unreadable response.');}
   if(!res.ok)throw new Error(data.error||'Could not find suggestions.');return data;
 }
@@ -191,7 +205,22 @@ function collectionTransfer(){
   });
   label.append(input);actions.append(download,label);panel.append(copy,actions,status,el('p','transfer-privacy','The downloaded file is not encrypted. It does not include game-night entries.'));return panel;
 }
-function saved(root){root.append(heading('YOUR COLLECTION','Saved for later.','Your saved items are kept in this browser. You can move your collection to another device below.'));if(!state.saved.length){const box=empty('Nothing saved yet','Explore catalogs and save anything that catches your eye.');box.append(link('Explore','button primary','#/explore'));root.append(box);}else{const grid=el('div','cards');for(const item of state.saved)grid.append(card(item));root.append(grid);}root.append(collectionTransfer());}
+function saved(root){
+  root.append(heading('YOUR COLLECTION','Saved for later.','Your saved items are kept in this browser. Move your collection to another device below.'));
+  if(!state.saved.length){const box=empty('Nothing saved yet','Explore catalogs and save anything that catches your eye.');box.append(link('Explore','button primary','#/explore'));root.append(box,collectionTransfer());return;}
+  let view='grid';try{view=localStorage.getItem('find-your-next-library-view')==='list'?'list':'grid';}catch{}
+  const toolbar=el('div','library-toolbar'),searchField=el('div','field library-search'),label=el('label','','Search your collection');label.htmlFor='collection-query';
+  const search=document.createElement('input');search.id='collection-query';search.type='search';search.placeholder='Find a saved title';search.maxLength=150;searchField.append(label,search);
+  const tools=el('div','library-tools'),sort=document.createElement('select');sort.setAttribute('aria-label','Sort collection');for(const [value,name] of [['recent','Recently saved'],['title','Title: A to Z']]){const option=el('option','',name);option.value=value;sort.append(option);}
+  const views=el('div','library-view');views.setAttribute('role','group');views.setAttribute('aria-label','Collection layout');const gridButton=btn('Grid','',()=>setView('grid')),listButton=btn('List','',()=>setView('list'));views.append(gridButton,listButton);tools.append(sort,views);toolbar.append(searchField,tools);
+  const count=el('p','library-count');count.setAttribute('role','status');const results=el('div');root.append(toolbar,count,results);
+  function draw(){const query=normalizeName(search.value),items=state.saved.filter(item=>normalizeName(item.title).includes(query));if(sort.value==='title')items.sort((a,b)=>a.title.localeCompare(b.title));else items.reverse();
+    count.textContent=`${items.length} of ${state.saved.length} saved item${state.saved.length===1?'':'s'}`;clear(results);results.className=view==='list'?'library-list':'cards';gridButton.setAttribute('aria-pressed',String(view==='grid'));listButton.setAttribute('aria-pressed',String(view==='list'));
+    if(!items.length){results.className='';results.append(empty('No matching titles','Try a different name or clear your search.'));}else for(const item of items)results.append(card(item));
+  }
+  function setView(next){view=next;try{localStorage.setItem('find-your-next-library-view',view);}catch{}draw();}
+  search.addEventListener('input',draw);sort.addEventListener('change',draw);draw();root.append(collectionTransfer());
+}
 function group(root){
   root.append(heading('PLAN TOGETHER','Make game night easier.','Find games in common and compare how long each person can play.'));
   root.append(el('p','tip','Enter what each person is willing to play. Titles are matched without case or punctuation differences; verify ownership, platform and game duration yourselves.'));
@@ -226,5 +255,5 @@ function render({focus=false}={}){
 }
 $('.skip').addEventListener('click',event=>{event.preventDefault();$('#main').focus();});
 $('#about-button').addEventListener('click',()=>$('#about-dialog').showModal());$('#about-close').addEventListener('click',()=>$('#about-dialog').close());window.addEventListener('hashchange',()=>render({focus:true}));
-async function init(){qlooReady=await checkDiscoveryAvailability();$('#side-status').textContent=qlooReady?'Taste discovery enabled · service may vary':'Taste discovery unavailable';render();}
+async function init(){qlooReady=await checkDiscoveryAvailability();$('#side-status').textContent=qlooReady?'Discover from your interests':'Taste discovery unavailable';render();}
 init();

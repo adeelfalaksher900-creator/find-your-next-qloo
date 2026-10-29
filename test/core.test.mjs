@@ -98,10 +98,11 @@ test('collection merge preserves existing data, strips invalid entries and respe
   assert.equal(full.interests.length,60);assert.equal(full.overflow,1);
 });
 
-test('uses a smaller TVmaze cover only when it has enough physical pixels', () => {
+test('keeps phone thumbnails compact and preserves original art for large surfaces', () => {
   const art={source:'TVmaze',image:'https://static.tvmaze.com/uploads/images/original_untouched/1/3.jpg',imageFallback:'https://static.tvmaze.com/uploads/images/medium_portrait/1/3.jpg'};
   assert.equal(chooseArtwork(art,140,1),art.imageFallback);
-  assert.equal(chooseArtwork(art,140,2),art.image);
+  assert.equal(chooseArtwork(art,140,3),art.imageFallback);
+  assert.equal(chooseArtwork(art,220,1),art.image);
   assert.equal(chooseArtwork(art,0,1),art.image);
   assert.equal(chooseArtwork({...art,source:'Open Library'},140,1),art.image);
 });

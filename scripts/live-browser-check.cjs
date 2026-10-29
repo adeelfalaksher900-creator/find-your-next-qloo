@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const base=process.env.FYN_BASE_URL || 'https://find-your-next-qloo.vercel.app/';
 if(process.env.FYN_LIVE_TEST!=='yes'){console.error('Set FYN_LIVE_TEST=yes to run the live quota-consuming browser check.');process.exit(1);}
 (async()=>{
- const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})});
+ const browser=await chromium.launch(await require('./browser-runtime.cjs').launchOptions());
  try{
   const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true,reducedMotion:'reduce'});
   const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));

@@ -36,7 +36,7 @@ Identical names can refer to different things, so the Qloo adapter is designed t
 
 The site supports real catalog searches and a local group-comparison flow. Automated tests cover input validation, provider failure handling, matching, selection limits, request ordering and simulated Qloo responses. Desktop checks covered real searches; mobile-browser emulation covered touch interactions with controlled catalog responses. User impact and recommendation quality have not been measured.
 
-Before judging, diagnose and fix the production quota-guard failures, test Qloo calls end-to-end on the public site, test on real mobile devices and with screen readers, and publish the complete source with its MIT license in a public repository. Validate at least one concrete use case with real users and ensure suggestions offer useful next actions. Event schedules, tickets, gift inventory and creator availability need separate authorized sources and are not currently verified.
+Before judging, diagnose and fix the production quota-guard failures, test Qloo calls end-to-end on the public site, and test on real mobile devices and with screen readers. The source is available in a public MIT-licensed repository. Validate at least one concrete use case with real users and ensure suggestions offer useful next actions. Event schedules, tickets, gift inventory and creator availability need separate authorized sources and are not currently verified.
 
 ## Reproducible checks for reviewers
 
@@ -45,11 +45,15 @@ Before judging, diagnose and fix the production quota-guard failures, test Qloo 
 3. Under Together, enter “Minecraft, Portal 2” for one person and “Portal 2, Stardew Valley” for the other. The app identifies Portal 2 as common; optional durations are not a calendar.
 4. For You requests Qloo suggestions, but the production quota guard has recently returned 503 and requires repair before this step can be relied on.
 
+## Source refresh awaiting deployment
+
+The latest source adds collection search, alphabetical sorting, persistent grid/list layouts and a revised iOS-inspired interface. Forty-nine automated tests pass. These changes are not yet on the public website. Automatic cloud sync could not be provisioned because the selected Supabase organization has reached its two-active-free-project limit; no other project was changed. The public project thumbnail is now 3:2.
+
 ## Required custom answers
 
 - When did you begin your project? **October 28, 2026** (first local commit date).
 - Public URL to project: **https://find-your-next-qloo.vercel.app/**
-- Public repository URL: **pending**; do not invent one.
+- Public repository URL: **https://github.com/adeelfalaksher900-creator/find-your-next-qloo**
 - Existing-project upgrade question: not applicable if the project was started during this hackathon; verify against team history before answering.
 
 No final submission is authorized. The demo video is optional under the current rules; the separate 15-image gallery and video remain outside this phase.

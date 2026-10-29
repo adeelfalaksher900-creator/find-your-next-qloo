@@ -3,8 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": {"start":"node src/server.mjs","test":"node --test","verify:qloo":"node scripts/verify-qloo.mjs"},
-  "engines": {"node":">=22"},
-  "dependencies": {"@vercel/blob":"2.6.1"},
-  "overrides": {"zod":"4.6.6"}
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test",
+    "verify:qloo": "node scripts/verify-qloo.mjs",
+    "test:ui": "node scripts/check-ui.mjs",
+    "test:load": "node scripts/load-check.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@vercel/blob": "2.6.1"
+  },
+  "overrides": {
+    "zod": "4.6.6"
+  }
 }
