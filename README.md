@@ -105,3 +105,8 @@ For the optional browser checks, install Chrome or Chromium and install test-onl
 For an opt-in quota-consuming production smoke test, set `FYN_LIVE_TEST=yes` and run `node scripts/live-browser-check.cjs`. Browser emulation and automated accessibility tools are not substitutes for a real phone, VoiceOver, NVDA or a complete accessibility audit. See [the validation report](docs/validation.md) for scope and results. Tests do not establish comprehensive Qloo coverage, recommendation quality, accessibility compliance, suitability for minors, usability or competitive advantage.
 
 `FYN_SECURITY_LIVE=yes FYN_BASE_URL=https://<authorized-host>/ node scripts/security-smoke.mjs` performs bounded negative HTTP checks without valid Qloo calls. `FYN_CLOUD_LIVE=yes FYN_BASE_URL=https://<authorized-host>/ node scripts/verify-deployed-cloud.mjs` creates and cleans up one synthetic encrypted collection through the deployed proxy. These opt-in checks are for an owner-authorized target.
+
+
+## Submission media
+
+The Devpost gallery contains 15 captioned application captures. A 1920 × 1080 narrated walkthrough and English SRT were delivered for the owner to upload to YouTube. The video URL and final entry will be submitted by the owner. The initial-readiness notice correction and six additional browser regression journeys are recorded in [validation notes](docs/validation.md).

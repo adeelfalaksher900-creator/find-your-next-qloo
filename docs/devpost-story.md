@@ -10,6 +10,10 @@ The released interface includes collection search, type filters, alphabetical so
 
 Catalogs and Qloo remain separate sources. Books and game offers have 24-record source pages and a Load more action. Game offers are combined by game, so one page can contain fewer unique cards. TVmaze returns its own finite search set. For You offers up to 12, 24 or 48 Qloo results rather than silently truncating everything to twelve.
 
+## Try it in a few steps
+
+Open **My interests**, add **Portal 2** with category **Game**, then open **For you**. Select Portal 2, choose **Books** and request suggestions. Qloo resolves the interest and returns cross-category associations with explanations. To try the group flow, enter Portal 2 and Minecraft for each of two people in **Together**, compare common titles, then request new games together.
+
 ## Where Qloo fits
 
 The discovery workflow sends up to four selected interests to our server, resolves them to unambiguous Qloo entities and requests related entities in another category. A favorite game can lead to books or artists. Where Qloo returns explanation data, the interface shows which named interests contributed. Together can combine one game from each person as input. Suggestions are associations, not a guarantee that everyone will like them or that an item is available.
@@ -41,3 +45,7 @@ Adeel Falak Sher and Raouf Khalid.
 Catalog and artwork sources: [TVmaze](https://www.tvmaze.com/api), [Open Library](https://openlibrary.org/developers/api) and [CheapShark](https://apidocs.cheapshark.com/). Taste connections use [Qloo](https://docs.qloo.com/). The interest illustration uses the MIT-licensed Anatomy kit; attribution is in the repository. The implemented collection layout follows list/grid patterns reviewed on Mobbin, using original app branding and assets.
 
 [Open the app](https://find-your-next-qloo.vercel.app/) · [Source code and setup](https://github.com/adeelfalaksher900-creator/find-your-next-qloo) · [Testing details](https://github.com/adeelfalaksher900-creator/find-your-next-qloo/blob/main/docs/validation.md)
+
+## About the gallery and walkthrough
+
+The fifteen gallery images show actual application states. The walkthrough uses a local copy of the released frontend with real Production API responses, recorded and edited in Hyperframes. Idle loading is trimmed and English narration is synthetic. No provider fixtures or invented user-impact figures appear in the media.

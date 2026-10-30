@@ -6,7 +6,7 @@
 - Repository: https://github.com/adeelfalaksher900-creator/find-your-next-qloo
 - Team: Adeel Falak Sher and Raouf Khalid; individual roles are not asserted.
 - Earliest documented project activity: October 27, 2026 (Devpost creation). The first local code commit is October 28; that is not necessarily the beginning of all project activity.
-- Status: public project page, Qloo entry unsubmitted. Images/gallery and video remain deferred; the 3:2 thumbnail is already uploaded.
+- Status: public project page, Qloo entry unsubmitted. All 15 captioned gallery images are uploaded and the 1080p walkthrough is delivered for YouTube upload. The 3:2 thumbnail remains uploaded. The owner will add the YouTube URL and submit.
 
 ## The problem
 
@@ -62,3 +62,9 @@ Catalog and artwork sources: [TVmaze](https://www.tvmaze.com/api), [Open Library
 | 28701 — existing-project upgrades | Do not assert an answer without team history; optional field. |
 
 The host requires a functional externally hosted Qloo application, public source with an identifiable open-source license and accurate text. Video is optional. The public core journeys now pass bounded live checks; review the recorded limits before final submission. The official starter kit and documentation are linked in judging-checklist.md. No final entry may be submitted until the owner confirms the rules/eligibility agreement.
+
+## Media and final handoff — October 30
+
+The 15-image gallery and captions are uploaded and publicly verified. Devpost story version 9 includes a short try-it guide. The MP4 is 1920 × 1080 / 30 fps, about 3:33, with English synthetic narration and captions; an SRT, gallery ZIP and editable Hyperframes project are provided. It contains actual interface actions and live Production API responses, not fixture results. Waiting is edited for length. The recording predates the final initial-readiness-label patch; the live app now clears that message correctly.
+
+The chosen story follows a book search, Portal 2 → books through Qloo, a saved shortlist, and game-night comparison. Hypit's direction guidance informed the workflow; VON was offline, so the final renderer is Hyperframes. No video URL or final submission was sent. Final form answers are prepared above for the owner to review; eligibility/rules acceptance remains the owner's action. The logged-out browser and connector's lack of a save-draft answer operation prevented saving those private form answers.
